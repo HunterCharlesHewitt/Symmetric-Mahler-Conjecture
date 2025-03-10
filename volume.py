@@ -27,8 +27,9 @@ def find_volume(dim, normal_vectors):
     polar_dual = find_polar_dual(dim,normal_vectors)
     return find_polar_dual_volume(dim,polar_dual)
 
-# n = 2
-# vectors = np.array([[2,0], [0,2], [-2,0], [0,-2]])
+def volume_k_metric(dim, K, T):
+    return find_volume(dim, T)*find_polar_dual_volume(dim,K)
+
 
 
 # print(find_polar_duel(n,find_polar_duel(n,vectors)))
