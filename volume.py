@@ -6,10 +6,6 @@ from scipy.spatial import ConvexHull, HalfspaceIntersection
 from scipy.optimize import linprog
 import matplotlib.pyplot as plt
 
-# not used
-def inner_product(vector1, vector2):
-    return sum(a*b for a,b in zip(vector1, vector2))
-
 def find_polar_dual(dim, normal_vectors):
     halfspace_vectors = np.hstack((normal_vectors, np.ones((normal_vectors.shape[0], 1)) * -1))
     hs = HalfspaceIntersection(halfspace_vectors, np.zeros(dim))
