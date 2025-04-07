@@ -6,3 +6,4 @@
 
 ## Helpful Documentation:
 1. https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.HalfspaceIntersection.html
+2. https://web.stanford.edu/~boyd/cvxbook/bv_cvxbook.pdf
