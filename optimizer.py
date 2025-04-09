@@ -12,7 +12,7 @@ from orbit import *
 #     normalized_dual = np.array([row / np.linalg.norm(row) for row in dual])
 #     return normalized_dual
 
-def optimize_k_length(convexEs, cones, T, K):
+def optimize_k_length(convexEs, cones, T, K, verbose=False):
     # convexEs = (E1..Em) is a list of convex sets which lie on the boundary of T and have codimention at least 1.
     # cones = (C1..Cm) is a list of vectors in K. 
     # T is the table and K defines the asymetric norm.
@@ -43,17 +43,20 @@ def optimize_k_length(convexEs, cones, T, K):
         objective += t
         # Add constraints that ensure t bounds the K-norm
         for k in K:
-            print(f"This line below adds the constraint that x_{i}-x_{(i-1)%m} @ {k} <= length")
+            if verbose:
+                print(f"This constraint is x{i} - x{(i-1)%m} @ {k} <= length")
             constraints.append(diff @ k <= t)
     
     # 1. Each point must lie in its corresponding convex set
     for i, (x, E) in enumerate(zip(xs, convexEs)):
         for v in T:
             if any(np.array_equal(v, e) for e in E):
-                print(f"This line below adds the constraint that x_{i} @ {v} == 1")
+                if verbose:
+                    print(f"This constraint is x{i} @ {v} == 1")
                 constraints.append(x @ v == 1)
             else:
-                print(f"This line below adds the constraint that x_{i} @ {v} <= 1")
+                if verbose:
+                    print(f"This constraint is x{i} @ {v} <= 1")
                 constraints.append(x @ v <= 1)
     
     # 2. Each difference vector must lie in its corresponding cone
@@ -63,15 +66,18 @@ def optimize_k_length(convexEs, cones, T, K):
         c = cones[i]
         # For each vector k in K, the projection onto c must be maximal
         for k in K:
-            print(f"diff is in the correct cone: x_{i}-x_{(i-1)%m} @ {c} >= x_{i}-x_{(i-1)%m} @ {k}")
+            if verbose:
+                print(f"This constraint is x{i} - x{(i-1)%m} @ {c} >= x{i} - x{(i-1)%m} @ {k}")
             constraints.append(diff @ c >= diff @ k)
     
     # Solve the optimization problem
     prob = cp.Problem(cp.Minimize(objective), constraints)
     result = prob.solve()
 
-    print(prob.status)
-    print(result)
+    if verbose:
+        print(prob.status)
+        print(result)
+
     if prob.status == 'optimal':
         # Extract the optimal points
         optimal_points = [x.value for x in xs]
