@@ -81,8 +81,8 @@ def check_if_line_in_cone(V):
 def inner_product(vector1, vector2):
     return sum(a*b for a,b in zip(vector1, vector2))
 
-def K_norm(p, K): # I think this is correct
-    return max(inner_product(p,v) for v in K)
+def K_norm(p, K):
+    return np.max(np.dot(K, p))
 
 def K_length(pi,pi_plus1, K):
     return K_norm(pi_plus1 - pi, K) # it is not trivial why this is correct, but it is. (I proved it on paper)

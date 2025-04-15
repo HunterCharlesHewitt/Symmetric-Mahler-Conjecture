@@ -52,8 +52,10 @@ def optimize_k_length(convexEs, cones, T, K, verbose=False):
     
     # 1. Each point must lie in its corresponding convex set
     for i, (x, E) in enumerate(zip(xs, convexEs)):
+        # Pre-compute which vectors in T are in E
+        E_set = {tuple(e) for e in E}
         for v in T:
-            if any(np.array_equal(v, e) for e in E):
+            if tuple(v) in E_set:
                 if verbose:
                     print(f"This constraint is x{i} @ {v} == 1")
                 constraints.append(x @ v == 1)
