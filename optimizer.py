@@ -165,12 +165,30 @@ def get_all_facets(T):
             rv.append(s)
     return rv
 
+def orbit_supports(orbit, support_orbit):
+    # We say an orbit D supports an orbit C if for every facet S in C there is a facet S' in D such that S \subseteq S'
+    # each orbit is a list of np arrays of vectors of the same dimension.
+    for S in orbit:
+        facet_supported = False
+        for S_prime in support_orbit:
+            # Check if facet_in_orbit is a subset of facet_in_support_orbit
+            if all(any(np.array_equal(vec1, vec2) for vec2 in S_prime) for vec1 in S):
+                facet_supported = True
+                break
+        if not facet_supported:
+            return False
+    return True
+
 def get_all_untranslatable_orbit(T):
     # returns all lists of 
     all_facets = get_all_facets(T)
     all_orbit = list(combinations(all_facets, len(T[0])+1))
     rv = []
     for orbit in all_orbit:
+        # We only want to include orbits that are do not suport any other orbit in rv.
+        # This is because adding an orbit that is supported by another will waste computation time.
+        if any(orbit_supports(other_orbit, orbit) for other_orbit in rv):
+            continue
         vects_in_orbit = []
         for arr in orbit:
             for v in arr:
