@@ -50,21 +50,22 @@ from visualizer import *
 # T = find_polar_dual(dim,np.array([[math.sqrt(6),-math.sqrt(3),-2], [-math.sqrt(6), -math.sqrt(3), -2], [0, math.sqrt(8), -2], [0,0,2]]))
 # K = find_polar_dual(dim, T)
 
-# Random shapes
-# dim = 2
+# # Random shapes
+# dim = 3
 # def get_random_shape(t_sides,k_sides):
 #     T = None
+#     K = None
 #     # This is the K from the n=2.84 example (second best example we had before using this)
 #     # K = np.array([[-0.70880303,  0.64350865], [ 0.31667143, -0.20694839], [-0.41566717, -0.62539306]])
-#     while T is None or K is None or not check_if_line_in_cone(K) or not check_if_line_in_cone(T):
-#         T = np.array([[random.random()*2-1, random.random()*2-1] for _ in range(t_sides)])
-#         K = np.array([[random.random()*2-1, random.random()*2-1] for _ in range(k_sides)])
+#     while T is None or not check_if_line_in_cone(T):
+#         T = np.array([[random.random()*2-1 for _ in range(dim)] for _ in range(t_sides)])
+#     while K is None or not check_if_line_in_cone(K):
+#         K = np.array([[random.random()*2-1 for _ in range(dim)] for _ in range(k_sides)])
 #     return T,K
-# max_num = 2
+# max_num = 3
 # times = 1000
 # for i in range(times):
-#     sidesarr = [3,3,3,3,3,4,4,4,5,5,6,7]
-#     T,K = get_random_shape(random.choice(sidesarr),3)
+#     T,K = get_random_shape(4,4)
 
 #     val, orbit, cones = c_K_T_(T, K, stop_num=max_num, return_lots = True)
 #     vol = volume_k_metric(dim, K, T)
@@ -86,7 +87,11 @@ from visualizer import *
 #         print("xs:")
 #         print(xs)
 #         print("______________________________")
-#         visualize_polytope(T, xs, K)
+#         if dim != 2:
+#             Q = np.array([[0,1], [1,0], [0,-1], [-1,0]])
+#             visualize_polytope(Q)
+#         else:
+#             visualize_polytope(T, xs, K)
 
 # val = c_K_T_(T, K)
 
@@ -137,11 +142,22 @@ from visualizer import *
 # T = np.array([[ 0.59017817,  0.5542213 ], [-0.28508066, -0.74528511], [-0.68637222,  0.80348173]])
 # K = np.array([[ 0.71242983,  0.31702145],[ 0.19720467,  0.77965144],[-0.29178176, -0.66381123]])
 
+#### ___________________________________________________
+#### 3D case ratio needs to beat 6
 
-# print(c_K_T_(T, K))
-# visualize_polytope(T)
+# # ratio 6.65
+# T = np.array([[-0.40194532,  0.16983462, -0.56022014], [-0.87120207, -0.97969581,  0.7977686 ], [ 0.83904777,  0.14480077, -0.20240849], [ 0.814427,    0.30484695, 0.59935952]])
+# K = np.array([[ 0.00832644,  0.62359217,  0.0120101 ], [ 0.28067259, -0.79645379,  0.71853707], [ 0.8897662,   0.11409895, -0.19667404], [-0.5365675,  -0.33801618, -0.61810512]])
 
-# dim = 2
+# # # ratio 7.2
+# T = np.array([[ 0.71652441,  0.68271534,  0.0157473 ], [ 0.32863243, -0.64573113,  0.57771234], [-0.97883107,  0.13959444,  0.26231337], [-0.11557885, -0.4785974,  -0.85218172]])
+# K = np.array([[-0.95462867, -0.46968908, -0.90322578], [-0.56556438, -0.60328048, -0.04336644], [ 0.31941768, -0.18980349, -0.87870316], [ 0.53539649,  0.53852404,  0.5290557 ]])
+
+
+# dim = 3
+
+# print(find_polar_dual(dim, T))
+# print(find_polar_dual(dim, K))
 
 # val, orbit, cones = c_K_T_(T, K, return_lots = True)
 # vol = volume_k_metric(dim, K, T)
@@ -159,6 +175,6 @@ from visualizer import *
 # print("xs:")
 # print(xs)
 # print("______________________________")
-
-# # visualize_polytope(T, xs)
-# visualize_polytope(T, xs, K)
+# if dim == 2:
+#     # visualize_polytope(T, xs)
+#     visualize_polytope(T, xs, K)
