@@ -198,18 +198,36 @@ def get_all_untranslatable_orbit(T):
             rv.append(orbit)
     return rv
 
-def c_K_T_(T, K):
+def cube_capacilty_ratio(dim):
+    if dim == 2:
+        return math.pow(4,dim)/8
+    # TODO: Add more cases
+    else:
+        raise Exception("Not implemented")
+
+def c_K_T_(T, K, stop_num=None):
+    dim = len(T[0])
+    vol = volume_k_metric(dim, K, T)
+    if stop_num is None: # Should be the most efficient.
+        # big brain trick to be lazy
+        stop_num = cube_capacilty_ratio(dim)
+        
     orbits = get_all_untranslatable_orbit(T)
     print(len(orbits))
     min_len = float('inf')
-    for i, orbit in enumerate(orbits):
-        print(f"Started orbit {i}")
-        # print(len(orbit))
-        # for thing in orbit:
-        #     print(len(thing))
-        # print(orbit)
-        val, _ = optimize_over_cones(orbit, T, K)
-        min_len = min(val, min_len)
+    lazinesses_levels = [0.99, 0.95, 0.9, 0.8, 0]
+    for laziness in lazinesses_levels:
+        for i, orbit in enumerate(orbits):
+            print(f"Started orbit {i}, laziness {laziness}")
+            # print(len(orbit))
+            # for thing in orbit:
+            #     print(len(thing))
+            # print(orbit)
+            val, _ = optimize_over_cones(orbit, T, K, laziness)
+            if min_len > val:
+                min_len = val
+                if (math.pow(min_len, dim)/vol < stop_num):
+                    return min_len
     return min_len
 
 # print(check_if_line_in_cone(np.array([[1, 0], [0, 1], [-1, -1]]))) # True
