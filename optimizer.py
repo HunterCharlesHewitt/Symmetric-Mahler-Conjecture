@@ -165,7 +165,7 @@ def get_all_facets(T):
             rv.append(s)
     return rv
 
-def get_all_untranslatable_Es(T):
+def get_all_untranslatable_orbit(T):
     # returns all lists of 
     all_facets = get_all_facets(T)
     all_orbit = list(combinations(all_facets, len(T[0])+1))
