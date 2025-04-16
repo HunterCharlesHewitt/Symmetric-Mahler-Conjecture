@@ -15,8 +15,8 @@ from orbit import *
 #     normalized_dual = np.array([row / np.linalg.norm(row) for row in dual])
 #     return normalized_dual
 
-def optimize_k_length(convexEs, cones, T, K, verbose=False):
-    # convexEs = (E1..Em) is a list of convex sets which lie on the boundary of T and have codimention at least 1.
+def optimize_k_length(orbit, cones, T, K, verbose=False):
+    # orbit = (E1..Em) is a list of convex sets which lie on the boundary of T and have codimention at least 1.
     # cones = (C1..Cm) is a list of vectors in K. 
     # T is the table and K defines the asymetric norm.
 
@@ -29,7 +29,7 @@ def optimize_k_length(convexEs, cones, T, K, verbose=False):
     # such that x{i+1}-xi is in Ci.
 
     n = len(K[0])  # dimension of the space
-    m = len(convexEs)  # number of points in the orbit
+    m = len(orbit)  # number of points in the orbit
     
     # Create variables for each point in the orbit
     xs = [cp.Variable(n) for _ in range(m)]
@@ -51,7 +51,7 @@ def optimize_k_length(convexEs, cones, T, K, verbose=False):
             constraints.append(diff @ k <= t)
     
     # 1. Each point must lie in its corresponding convex set
-    for i, (x, E) in enumerate(zip(xs, convexEs)):
+    for i, (x, E) in enumerate(zip(xs, orbit)):
         for v in T:
             if any(np.array_equal(v, e) for e in E):
                 if verbose:
@@ -104,9 +104,9 @@ def get_all(arr, n):
             rv.append(to_add)
     return rv
 
-def optimize_over_cones(convexEs, T, K, lazyness=0):
+def optimize_over_cones(orbit, T, K, lazyness=0):
     k_len = len(K)
-    m = len(convexEs)
+    m = len(orbit)
 
     min_val = float('inf')
     min_cones = None
@@ -115,7 +115,7 @@ def optimize_over_cones(convexEs, T, K, lazyness=0):
 
     for cones in all_cones:
         if random.random() > lazyness:
-            val, _ = optimize_k_length(convexEs, cones, T, K, verbose=False)
+            val, _ = optimize_k_length(orbit, cones, T, K, verbose=False)
             if val < min_val:
                 min_val = val
                 min_cones = cones
@@ -168,20 +168,20 @@ def get_all_facets(T):
 def get_all_untranslatable_Es(T):
     # returns all lists of 
     all_facets = get_all_facets(T)
-    all_Es = list(combinations(all_facets, len(T[0])+1))
+    all_orbit = list(combinations(all_facets, len(T[0])+1))
     rv = []
-    for Es in all_Es:
-        vects_in_Es = []
-        for arr in Es:
+    for orbit in all_orbit:
+        vects_in_orbit = []
+        for arr in orbit:
             for v in arr:
-                if not any(np.array_equal(v, u) for u in vects_in_Es):
-                    vects_in_Es.append(v)
-        if check_if_line_in_cone(vects_in_Es): # if vects_in_Es is a line but a subset of it is aswell, then it is ineficient to include it.
-            rv.append(Es)
+                if not any(np.array_equal(v, u) for u in vects_in_orbit):
+                    vects_in_orbit.append(v)
+        if check_if_line_in_cone(vects_in_orbit): # if vects_in_orbit is a line but a subset of it is aswell, then it is ineficient to include it.
+            rv.append(orbit)
     return rv
 
 def c_K_T_(T, K):
-    orbits = get_all_untranslatable_Es(T)
+    orbits = get_all_untranslatable_orbit(T)
     print(len(orbits))
     min_len = float('inf')
     for i, orbit in enumerate(orbits):
@@ -211,13 +211,13 @@ def c_K_T_(T, K):
 # # K is the polar duel of T 
 # K = np.array([[1,1], [1,-1], [-1,1], [-1,-1]])
 # # here m = 2. # in this case 2d array with only one item.
-# Es = [np.array([[0,1]]), np.array([[0,-1]])]
+# orbit = [np.array([[0,1]]), np.array([[0,-1]])]
 # cones = [np.array([1,1]), np.array([-1,-1])]
 
 # # # Viterbo counter example
-# dim=2
-# sides = 5
-# T_vertecies = np.array([[math.cos(2*math.pi*i/sides), math.sin(2*math.pi*i/sides)] for i in range(sides)])
+dim=2
+sides = 10
+T_vertecies = np.array([[math.cos(2*math.pi*i/sides), math.sin(2*math.pi*i/sides)] for i in range(sides)])
 # # # Hiam and Ostrover could have been more clear about this, but it seems like the normal vectors that define K lie on the unit sphere (standard norm)
 # # # This is odd since the dual of the the vectrors defining T lie on the unit sphere. I belive this because they inner producted these unit vectors
 # # # with vectors in the boundary of the polytope T.
@@ -233,19 +233,19 @@ def c_K_T_(T, K):
 # print(math.pow(val,2)/vol)
 
 # # case 1
-# # Es = [np.array([T[1]]), np.array([T[4]]), np.array([T[3]])]
+# # orbit = [np.array([T[1]]), np.array([T[4]]), np.array([T[3]])]
 # # cones = np.array([K[0], K[3], K[2]])
 # # cones = np.array([K[1], K[4], K[3]])
 # # case 2
-# Es = [np.array([T[0]]), np.array([T[2]]), np.array([T[4]])]
+# orbit = [np.array([T[0]]), np.array([T[2]]), np.array([T[4]])]
 # # cones = np.array([K[0], K[2], K[4]])
 # # cones = np.array([K[1], K[3], K[4]])
 
 # vol = volume_k_metric(dim, K, T)
-# val, cones = optimize_over_cones(Es, T, K, lazyness=0)
-# # val, xs = optimize_k_length(Es, cones, T, K, verbose=True)
+# val, cones = optimize_over_cones(orbit, T, K, lazyness=0)
+# # val, xs = optimize_k_length(orbit, cones, T, K, verbose=True)
 
-# val, xs = optimize_k_length(Es, cones, T, K, verbose=True)
+# val, xs = optimize_k_length(orbit, cones, T, K, verbose=True)
 
 # print(vol)
 # print(val)
