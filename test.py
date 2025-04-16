@@ -1,5 +1,6 @@
 print("STart")
 from optimizer import *
+from visualizer import *
 print("IMPORTING TAKES A LONG TIME FOR NO REASON")
 
 # print(check_if_line_in_cone(np.array([[1, 0], [0, 1], [-1, -1]]))) # True
@@ -95,3 +96,30 @@ print("IMPORTING TAKES A LONG TIME FOR NO REASON")
 # print(math.pow(val,dim)/vol)
 
 # print(sum([K_length(xs[(i-1)%3], xs[i], K) for i in range(3)]))
+
+T = np.array([[0.62366956, -0.42674541], [-0.31253492, -0.61563267], [-0.36879486,  0.64786535], [ 0.0944798, 0.97336157]])
+
+
+K = np.array([[ 0.13697769, -0.64448017], [ 0.07409263,  0.94443078], [-0.68079398, -0.10756287]])
+
+dim = 2
+
+val, orbit, cones = c_K_T_(T, K, return_lots = True)
+vol = volume_k_metric(dim, K, T)
+num = math.pow(val,dim)/vol
+print(num)
+print(T)
+print(K)
+print("val then num:")
+print(val)
+print(num)
+print("orbit and cones:")
+print(orbit)
+print(cones)
+_, xs = optimize_k_length(orbit, cones, T, K, verbose = False)
+print("xs:")
+print(xs)
+print("______________________________")
+
+visualize_polytope(T, xs)
+visualize_polytope(K)
