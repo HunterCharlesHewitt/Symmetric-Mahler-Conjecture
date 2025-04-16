@@ -199,13 +199,14 @@ def get_all_untranslatable_orbit(T):
     return rv
 
 def cube_capacilty_ratio(dim):
-    if dim == 2:
-        return math.pow(4,dim)/8
-    # TODO: Add more cases
-    else:
+    if dim < 2 or dim > 8:
         raise Exception("Not implemented")
-
-def c_K_T_(T, K, stop_num=None):
+    # maybe this is right:
+    # volumes = [16/2,32/3, 64/6, 128/15, 256/45, 1024/315, 512/315] # See OEIS A049606
+    # return math.pow(4, dim)/volumes[dim-2]
+    return math.factorial(dim)
+        
+def c_K_T_(T, K, stop_num=None, return_lots = False):
     dim = len(T[0])
     vol = volume_k_metric(dim, K, T)
     if stop_num is None: # Should be the most efficient.
@@ -215,17 +216,25 @@ def c_K_T_(T, K, stop_num=None):
     orbits = get_all_untranslatable_orbit(T)
     print(len(orbits))
     min_len = float('inf')
+    min_orbit = None
+    min_cones = None
     lazinesses_levels = [0.99, 0.95, 0.9, 0.8, 0]
     for laziness in lazinesses_levels:
         for i, orbit in enumerate(orbits):
-            print(f"Started orbit {i}, laziness {laziness}")
+            # print(f"Started orbit {i}, laziness {laziness}")
             # print(len(orbit))
             # for thing in orbit:
             #     print(len(thing))
             # print(orbit)
-            val, _ = optimize_over_cones(orbit, T, K, laziness)
+            val, cone = optimize_over_cones(orbit, T, K, laziness)
             if min_len > val:
                 min_len = val
+                min_orbit = orbit
+                min_cones = cone
                 if (math.pow(min_len, dim)/vol < stop_num):
+                    if return_lots:
+                        return min_len, min_orbit, min_cones
                     return min_len
+    if return_lots:
+        return min_len, min_orbit, min_cones
     return min_len
