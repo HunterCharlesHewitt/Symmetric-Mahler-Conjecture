@@ -1,7 +1,5 @@
-print("STart")
 from optimizer import *
 from visualizer import *
-print("IMPORTING TAKES A LONG TIME FOR NO REASON")
 
 # print(check_if_line_in_cone(np.array([[1, 0], [0, 1], [-1, -1]]))) # True
 # print("__")
