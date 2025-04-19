@@ -1,6 +1,6 @@
 import math
 import random
-from itertools import combinations
+from itertools import combinations, permutations
 import numpy as np
 import cvxpy as cp
 
@@ -195,7 +195,10 @@ def get_all_untranslatable_orbit(T):
                 if not any(np.array_equal(v, u) for u in vects_in_orbit):
                     vects_in_orbit.append(v)
         if check_if_line_in_cone(vects_in_orbit): # if vects_in_orbit is a line but a subset of it is aswell, then it is ineficient to include it.
-            rv.append(orbit)
+            # also append all permutations of orbit that fix the last element
+            last_element = orbit[-1]
+            for perm in permutations(orbit[:-1]):
+                rv.append(perm + (last_element,)) # This is what generated the incorrect orbit.
     return rv
 
 def cube_capacilty_ratio(dim):
