@@ -161,7 +161,13 @@ def get_all_facets(T):
     for r in range(1, len(T)+1):
         power_set_T.extend(list(combinations(T, r)))
     for s in power_set_T:
-        if check_valid_facet(s, T):
+        try:
+            if check_valid_facet(s, T):
+                rv.append(s)
+        except:
+            # it would bad if an error caused the program to overcredit a species.
+            print("Error")
+            print(T)
             rv.append(s)
     return rv
 
