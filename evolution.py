@@ -50,7 +50,7 @@ def mutate(species, mutation_rate, T_sides, K_sides):
             new_species = []
     K_ready = False
     while not K_ready:
-        for i in range(K_sides):
+        for i in range(T_sides, T_sides+K_sides):
             to_add = []
             for j in range(species.shape[1]):
                 to_add.append(species[i][j] + random.gauss(0, mutation_rate))
