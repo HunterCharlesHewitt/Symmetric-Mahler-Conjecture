@@ -127,6 +127,14 @@ def maximize_one_segment(T, K, facet_1, facet_2, cone):
     else:
         return 0
 
+def facets_equal(facet_1, facet_2):
+    if len(facet_1) != len(facet_2):
+        return False
+    for i, u in enumerate(facet_1):
+        if not np.array_equal(u, facet_2[i]):
+            return False
+    return True
+
 def find_cones_for_facet_pair(facet_list, T, K):
     # returns a 2d array of lists of cones
     # the ith row and jth column is the list of cones that are between the ith and jth facet.
@@ -137,7 +145,11 @@ def find_cones_for_facet_pair(facet_list, T, K):
             if i != j:
                 cones = []
                 for cone in K:
-                    max_length = maximize_one_segment(T, K, facet_list[i], facet_list[j], cone)
+                    max_length = 1
+                    try:
+                        max_length = maximize_one_segment(T, K, facet_list[i], facet_list[j], cone)
+                    except:
+                        continue
                     epsilon = 1e-6
                     if max_length >= epsilon:
                         cones.append(cone)
@@ -158,9 +170,9 @@ def optimize_over_cones(orbit, T, K, facet_list, cones_for_facet_pair, lazyness=
         cur_index = None
         past_index = None
         for j, facet_in_list in enumerate(facet_list):
-            if all(np.array_equal(v, cur_facet[k]) for k,v in enumerate(facet_in_list)):
+            if facets_equal(cur_facet, facet_in_list):
                 cur_index = j
-            if all(np.array_equal(v, past_facet[k]) for k,v in enumerate(facet_in_list)):
+            if facets_equal(past_facet, facet_in_list):
                 past_index = j
         if cur_index is None or past_index is None:
             raise Exception("Facet not found in facet_list")    
@@ -267,8 +279,8 @@ def get_all_untranslatable_orbit(T):
             for perm in permutations(orbit[:-1]):
                 rv.append(perm + (last_element,)) # This is what generated the incorrect orbit.
             # check if we can add to facets_included
-            for facet in orbit:
-                if not any([all(np.array_equal(facet[i], u) for i,u in enumerate(included_facet)) for included_facet in facets_included]):
+            for facet in orbit: # adding new facet to facets_included
+                if all(not facets_equal(facet, included_facet) for included_facet in facets_included):
                     facets_included.append(facet)
     return rv, facets_included
 
