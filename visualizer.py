@@ -1,6 +1,7 @@
-from scipy.spatial import HalfspaceIntersection
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.spatial import HalfspaceIntersection
+
 
 def visualize_polytope(polytope, points = [], second_polytope = None):
     dim = len(polytope[0])
