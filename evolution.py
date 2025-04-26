@@ -1,9 +1,5 @@
-import math
-import random
-
-
-from optimizer import *
-from visualizer import *
+from Project.Deprecated.optimizer import *
+from Project.Services.Output.VisualizerService import *
 
 def calculate_ratio(dim, T, K, stop_num=None):
     if stop_num is None:

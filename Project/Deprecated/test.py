@@ -1,4 +1,4 @@
-from optimizer import *
+from Project.Deprecated.optimizer import *
 from visualizer import *
 
 # print(check_if_line_in_cone(np.array([[1, 0], [0, 1], [-1, -1]]))) # True
@@ -34,16 +34,16 @@ from visualizer import *
 # # K is the polar dual of T 
 # K = generate_octahedron(dim)
 
-# #  Hiam Ostrover Viterbo counter example
-# dim=2
-# sides = 5
-# T_vertecies = np.array([[math.cos(2*math.pi*i/sides), math.sin(2*math.pi*i/sides)] for i in range(sides)])
-# # Hiam and Ostrover could have been more clear about this, but it seems like the normal vectors that define K lie on the unit sphere (standard norm)
-# # This is odd since the dual of the the vectrors defining T lie on the unit sphere. I belive this because they inner producted these unit vectors
-# # with vectors in the boundary of the polytope T.
-# K = np.array([[math.sin(2*math.pi*i/sides), -math.cos(2*math.pi*i/sides)] for i in range((-sides)//2, sides//2)])
-# # # K = find_polar_dual(dim, np.array([[math.sin(2*math.pi*i/sides), -math.cos(2*math.pi*i/sides)] for i in range((-sides)//2, sides//2)]))
-# T = find_polar_dual(dim, T_vertecies)
+#  Hiam Ostrover Viterbo counter example
+dim=2
+sides = 5
+T_vertecies = np.array([[math.cos(2*math.pi*i/sides), math.sin(2*math.pi*i/sides)] for i in range(sides)])
+# Hiam and Ostrover could have been more clear about this, but it seems like the normal vectors that define K lie on the unit sphere (standard norm)
+# This is odd since the dual of the the vectrors defining T lie on the unit sphere. I belive this because they inner producted these unit vectors
+# with vectors in the boundary of the polytope T.
+K = np.array([[math.sin(2*math.pi*i/sides), -math.cos(2*math.pi*i/sides)] for i in range((-sides)//2, sides//2)])
+# # K = find_polar_dual(dim, np.array([[math.sin(2*math.pi*i/sides), -math.cos(2*math.pi*i/sides)] for i in range((-sides)//2, sides//2)]))
+T = find_polar_dual(dim, T_vertecies)
 
 # # Tetrahedron example
 # dim = 3
@@ -62,37 +62,52 @@ from visualizer import *
 #     while K is None or not check_if_line_in_cone(K):
 #         K = np.array([[random.random()*2-1 for _ in range(dim)] for _ in range(k_sides)])
 #     return T,K
-# max_num = 3
-# times = 1000
-# for i in range(times):
-#     T,K = get_random_shape(4,4)
+# max_num = 0
+# times = 10000000
+# dim = 2  # or whatever your `dim` is
+# import sys
+# # open the file once, in write‐mode
+# with open("results.txt", "a") as f:
+#     for i in range(times):
+#         sys.stdout.write(f"\rTry #:{i} ---- Current_Max: {max_num}")
+#         sys.stdout.flush()
+#         sides = random.randint(4,7)
+#         T, K = get_random_shape(sides, sides)
+#         try:
+#             val, orbit, cones = c_K_T_(T, K, stop_num=3, return_lots=True)
+#         except Exception as e:
+#             continue
+#         vol = volume_k_metric(dim, K, T)
+#
+#         num = math.pow(val, dim) / vol
+#
+#         # write the basic 'num' line
+#         f.write(f"{num}\n")
+#
+#         if num > max_num:
+#             max_num = num
+#             f.write(f"WE FOUND A NEW MAX: {max_num}\n")
+#             f.write(f"T = {T}\n")
+#             f.write(f"K = {K}\n")
+#             f.write("val then num:\n")
+#             f.write(f"{val}\n")
+#             f.write(f"{num}\n")
+#             f.write("orbit and cones:\n")
+#             f.write(f"{orbit}\n")
+#             f.write(f"{cones}\n")
+#
+#             # if you still want to run the optimizer & include its output:
+#             _, xs = optimize_k_length(orbit, cones, T, K, verbose=False)
+#             f.write("xs:\n")
+#             f.write(f"{xs}\n")
+#             f.write("______________________________\n")
+#             f.flush()
 
-#     val, orbit, cones = c_K_T_(T, K, stop_num=max_num, return_lots = True)
-#     vol = volume_k_metric(dim, K, T)
-
-#     num = math.pow(val,dim)/vol
-#     print(num)
-#     if num > max_num:
-#         max_num = num
-#         print(f"WE FOUND A NEW MAX: {max_num}")
-#         print(T)
-#         print(K)
-#         print("val then num:")
-#         print(val)
-#         print(num)
-#         print("orbit and cones:")
-#         print(orbit)
-#         print(cones)
-#         _, xs = optimize_k_length(orbit, cones, T, K, verbose = False)
-#         print("xs:")
-#         print(xs)
-#         print("______________________________")
-#         if dim != 2:
-#             Q = np.array([[0,1], [1,0], [0,-1], [-1,0]])
-#             visualize_polytope(Q)
-#         else:
-#             visualize_polytope(T, xs, K)
-
+            # if dim != 2:
+            #     Q = np.array([[0,1], [1,0], [0,-1], [-1,0]])
+            #     visualize_polytope(Q)
+            # else:
+            #     visualize_polytope(T, xs, K)
 # val = c_K_T_(T, K)
 
 # vol = volume_k_metric(dim, K, T)
@@ -159,22 +174,22 @@ from visualizer import *
 # print(find_polar_dual(dim, T))
 # print(find_polar_dual(dim, K))
 
-# val, orbit, cones = c_K_T_(T, K, return_lots = True)
-# vol = volume_k_metric(dim, K, T)
-# num = math.pow(val,dim)/vol
-# print(num)
-# print(T)
-# print(K)
-# print("val then num:")
-# print(val)
-# print(num)
-# print("orbit and cones:")
-# print(orbit)
-# print(cones)
-# _, xs = optimize_k_length(orbit, cones, T, K, verbose = False)
-# print("xs:")
-# print(xs)
-# print("______________________________")
-# if dim == 2:
-#     # visualize_polytope(T, xs)
-#     visualize_polytope(T, xs, K)
+val, orbit, cones = c_K_T_(T, K, return_lots = True, stop_num=0)
+vol = volume_k_metric(dim, K, T)
+num = math.pow(val,dim)/vol
+print(num)
+print(T)
+print(K)
+print("val then num:")
+print(val)
+print(num)
+print("orbit and cones:")
+print(orbit)
+print(cones)
+_, xs = optimize_k_length(orbit, cones, T, K, verbose = False)
+print("xs:")
+print(xs)
+print("______________________________")
+if dim == 2:
+    # visualize_polytope(T, xs)
+    visualize_polytope(T, xs, K)

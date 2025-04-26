@@ -1,8 +1,9 @@
-from scipy.spatial import HalfspaceIntersection
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.spatial import HalfspaceIntersection
 
-def visualize_polytope(polytope, points = [], second_polytope = None):
+
+def visualize_polytope(polytope, points=[], second_polytope=None):
     dim = len(polytope[0])
     if dim != 2:
         raise Exception("Can not visualize non two dimentional polytopes.")
@@ -39,4 +40,3 @@ def visualize_polytope(polytope, points = [], second_polytope = None):
         plt.fill(*zip(*vertices2), alpha=0.5, edgecolor='orange')
         plt.scatter(*zip(*vertices2), color='orange')
     plt.show()
-    
