@@ -12,8 +12,10 @@ from Services.LengthService import K_length
 def get_capacity(T, K, volume_k_metric, stop_num=0):
     stop_num = get_cube_capacity_ratio(T.dim) if stop_num is None else stop_num
     cap = Capacity(length=float('inf'), orbit=None, cones=None)
-    for laziness, orbit in product((0.99, 0.95, 0.9, 0.8, 0), get_all_untranslatable_orbits(T)):
-        curr_length, cone = optimize_over_cones(orbit, T, K, laziness)
+    orbits, facet_list = get_all_untranslatable_orbits(T)
+    cones_for_facet_pair = find_cones_for_facet_pair(facet_list, T, K)
+    for laziness, orbit in product((0.99, 0.95, 0.9, 0.8, 0), orbits):
+        curr_length, cone = optimize_over_cones(orbit, T, K, facet_list, cones_for_facet_pair, laziness)
         if curr_length < cap.length:
             cap = Capacity(length=curr_length, orbit=orbit, cones=cone)
             if curr_length ** T.dim / volume_k_metric < stop_num:
@@ -32,6 +34,7 @@ def get_all_untranslatable_orbits(T):
     all_facets = get_all_facets(T)
     all_orbits = list(combinations(all_facets, T.dim + 1))
     untranslatable_orbits = []
+    facets_included = []
     for orbit in all_orbits:
         if does_orbit_support_another_orbit(orbit, untranslatable_orbits):
             continue
@@ -40,7 +43,11 @@ def get_all_untranslatable_orbits(T):
         if not is_line_in_cone(vects_in_orbit):
             continue
         append_orbit_permutations_that_fix_last_element(orbit, untranslatable_orbits)
-    return untranslatable_orbits
+        # check if we can add to facets_included
+        for facet in orbit:  # adding new facet to facets_included
+            if all(not facets_equal(facet, included_facet) for included_facet in facets_included):
+                facets_included.append(facet)
+    return untranslatable_orbits, facets_included
 
 
 def append_orbit_permutations_that_fix_last_element(orbit, untranslatable_orbits):
@@ -49,7 +56,7 @@ def append_orbit_permutations_that_fix_last_element(orbit, untranslatable_orbits
 
 
 def get_unique_vectors_from_orbit(orbit):
-    return list({tuple(v): v for arr in orbit for v in arr}.values())
+    return list({tuple(v): v for facet in orbit for v in facet}.values())
 
 
 def does_orbit_support_another_orbit(orbit, rv):
@@ -57,8 +64,21 @@ def does_orbit_support_another_orbit(orbit, rv):
 
 
 def get_all_facets(T):
-    vects = T.normal_vectors
-    return [subset for r in range(1, len(vects) + 1) for subset in combinations(vects, r) if is_facet_valid(subset, T)]
+    # returns all facets of any number of dimetions of T.
+    rv = []
+    power_set_T = []
+    for r in range(1, len(T.normal_vectors) + 1):
+        power_set_T.extend(list(combinations(T.normal_vectors, r)))
+    for s in power_set_T:
+        try:
+            if is_facet_valid(s, T):
+                rv.append(s)
+        except:
+            # it would bad if an error caused the program to overcredit a species.
+            print("Error")
+            print(T.normal_vectors)
+            rv.append(s)
+    return rv
 
 
 def is_facet_valid(facet, T, verbose=False):
@@ -98,15 +118,37 @@ def is_line_in_cone(V, epsilon=1e-6):
     return prob.status != cp.OPTIMAL
 
 
-def optimize_over_cones(orbit, T, K, lazyness=0):
+def optimize_over_cones(orbit, T, K, facet_list, cones_for_facet_pair, lazyness=0):
     min_val = float('inf')
     min_cones = None
-    all_cones = get_all_cones_of_length_n(K, len(orbit))
+
+    possible_cones = []
+    for i, cur_facet in enumerate(orbit):
+        past_facet = orbit[(i - 1) % len(orbit)]
+        # find facet in facet_list
+        cur_index = None
+        past_index = None
+        for j, facet_in_list in enumerate(facet_list):
+            if facets_equal(cur_facet, facet_in_list):
+                cur_index = j
+            if facets_equal(past_facet, facet_in_list):
+                past_index = j
+        if cur_index is None or past_index is None:
+            raise Exception("Facet not found in facet_list")
+        possible_cones.append(cones_for_facet_pair[past_index][cur_index])
+
+    all_cones = list(product(*possible_cones))
+
+    if not all_cones:
+        raise Exception("Unimplemented. all_cones is empty. This might be due to repeating edges")
+
     for cones in all_cones:
         if random.random() > lazyness:
             val, _ = optimize_k_length(orbit, cones, T, K, verbose=False)
             if val < min_val:
-                min_val, min_cones = val, cones
+                min_val = val
+                min_cones = cones
+
     return min_val, min_cones
 
 
@@ -126,7 +168,8 @@ def optimize_k_length(orbit, cones, T, K, verbose=False):
     orbit_len = len(orbit)
     constraints = []
 
-    objective = get_min_of_sum_of_k_lengths_between_consecutive_points(K, constraints, orbit_len, verbose, points_in_orbit)
+    objective = get_min_of_sum_of_k_lengths_between_consecutive_points(K, constraints, orbit_len, verbose,
+                                                                       points_in_orbit)
 
     get_constraints(K, T, cones, constraints, orbit_len, orbit, verbose, points_in_orbit)
 
@@ -170,7 +213,8 @@ def append_maximal_constraints(K, cones, constraints, len_orbit, verbose, xs):
         c = cones[i]
         # For each vector k in K, the projection onto c must be maximal
         for k in K.normal_vectors:
-            verbose and print(f"This constraint is x{i} - x{(i - 1) % len_orbit} @ {c} >= x{i} - x{(i - 1) % len_orbit} @ {k}")
+            verbose and print(
+                f"This constraint is x{i} - x{(i - 1) % len_orbit} @ {c} >= x{i} - x{(i - 1) % len_orbit} @ {k}")
             constraints.append(diff @ c >= diff @ k)
 
 
@@ -189,3 +233,77 @@ def append_constraints_for_points_in_corresponding_convex_set(T, constraints, or
 def get_all_cones_of_length_n(polytope, n):
     vects = polytope.normal_vectors
     return [np.array(p, dtype=vects.dtype) for p in product(vects, repeat=n)]
+
+
+def maximize_one_segment(T, K, facet_1, facet_2, cone):
+    n = len(K[0])  # dimension of the space
+
+    # the point on facet_1
+    x1 = cp.Variable(n)
+    # the point on facet_2
+    x2 = cp.Variable(n)
+
+    # Objective: maximize the length of the segment from x1 to x2
+    diff = x2 - x1
+    objective = cp.Variable()
+    constraints = []
+
+    # we want to minimize objective, but objective has three restrictions
+    # 0. The definition: Objective = diff @ cone
+    constraints.append(diff @ cone == objective)
+
+    # 1. x1 must lie on facet_1 and x2 must lie on facet_2
+    for v in T:
+        if any(np.array_equal(v, e) for e in facet_1):
+            constraints.append(x1 @ v == 1)
+        else:
+            constraints.append(x1 @ v <= 1)
+        if any(np.array_equal(v, e) for e in facet_2):
+            constraints.append(x2 @ v == 1)
+        else:
+            constraints.append(x2 @ v <= 1)
+
+    #2. diff must lie in cone
+    for k in K:
+        constraints.append(diff @ cone >= diff @ k)
+
+    prob = cp.Problem(cp.Maximize(objective), constraints)
+    prob.solve()
+
+    if prob.status == 'optimal':
+        return objective.value
+    else:
+        return 0
+
+
+def find_cones_for_facet_pair(facet_list, T, K):
+    # returns a 2d array of lists of cones
+    # the ith row and jth column is the list of cones that are between the ith and jth facet.
+    rv = []
+    for i in range(len(facet_list)):
+        to_add = []
+        for j in range(len(facet_list)):
+            if i != j:
+                cones = []
+                for cone in K.normal_vectors:
+                    try:
+                        max_length = maximize_one_segment(T, K, facet_list[i], facet_list[j], cone)
+                    except:
+                        continue
+                    epsilon = 1e-6
+                    if max_length >= epsilon:
+                        cones.append(cone)
+                to_add.append(cones)
+            else:
+                to_add.append([])
+        rv.append(to_add)
+    return rv
+
+
+def facets_equal(facet_1, facet_2):
+    if len(facet_1) != len(facet_2):
+        return False
+    for i, u in enumerate(facet_1):
+        if not np.array_equal(u, facet_2[i]):
+            return False
+    return True
