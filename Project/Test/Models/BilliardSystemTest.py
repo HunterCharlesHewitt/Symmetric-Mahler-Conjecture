@@ -2,8 +2,8 @@ import unittest
 
 import numpy as np
 
-from Models.BilliardSystem import BilliardSystem
-from Models.Polytope import Polytope
+from Project.Models.BilliardSystem import BilliardSystem
+from Project.Models.Polytope import Polytope
 
 
 class BilliardSystemTest(unittest.TestCase):

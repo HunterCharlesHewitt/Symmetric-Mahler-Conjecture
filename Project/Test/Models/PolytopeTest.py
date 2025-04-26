@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from Models.Polytope import Polytope
+from Project.Models.Polytope import Polytope
 
 
 class PolytopeTest(unittest.TestCase):

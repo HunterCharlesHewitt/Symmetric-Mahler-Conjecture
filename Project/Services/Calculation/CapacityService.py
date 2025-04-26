@@ -1,19 +1,19 @@
 import math
 from itertools import product
-from Models.Capacity import Capacity
+from Project.Models.Capacity import Capacity
 from itertools import combinations, permutations
 import cvxpy as cp
 import numpy as np
 import random
 
-from Services.LengthService import K_length
+from Project.Services.Calculation.LengthService import K_length
 
 
 def get_capacity(T, K, volume_k_metric, stop_num=0):
     stop_num = get_cube_capacity_ratio(T.dim) if stop_num is None else stop_num
     cap = Capacity(length=float('inf'), orbit=None, cones=None)
     orbits, facet_list = get_all_untranslatable_orbits(T)
-    cones_for_facet_pair = find_cones_for_facet_pair(facet_list, T, K)
+    cones_for_facet_pair = find_cones_for_facet_pair(facet_list=facet_list, T=T, K=K)
     for laziness, orbit in product((0.99, 0.95, 0.9, 0.8, 0), orbits):
         curr_length, cone = optimize_over_cones(orbit, T, K, facet_list, cones_for_facet_pair, laziness)
         if curr_length < cap.length:
@@ -118,7 +118,7 @@ def is_line_in_cone(V, epsilon=1e-6):
     return prob.status != cp.OPTIMAL
 
 
-def optimize_over_cones(orbit, T, K, facet_list, cones_for_facet_pair, lazyness=0):
+def optimize_over_cones(orbit, T, K, facet_list, cones_for_facet_pair, laziness=0):
     min_val = float('inf')
     min_cones = None
 
@@ -143,7 +143,7 @@ def optimize_over_cones(orbit, T, K, facet_list, cones_for_facet_pair, lazyness=
         raise Exception("Unimplemented. all_cones is empty. This might be due to repeating edges")
 
     for cones in all_cones:
-        if random.random() > lazyness:
+        if random.random() > laziness:
             val, _ = optimize_k_length(orbit, cones, T, K, verbose=False)
             if val < min_val:
                 min_val = val
@@ -236,12 +236,10 @@ def get_all_cones_of_length_n(polytope, n):
 
 
 def maximize_one_segment(T, K, facet_1, facet_2, cone):
-    n = len(K[0])  # dimension of the space
-
     # the point on facet_1
-    x1 = cp.Variable(n)
+    x1 = cp.Variable(K.dim)
     # the point on facet_2
-    x2 = cp.Variable(n)
+    x2 = cp.Variable(K.dim)
 
     # Objective: maximize the length of the segment from x1 to x2
     diff = x2 - x1
@@ -253,7 +251,7 @@ def maximize_one_segment(T, K, facet_1, facet_2, cone):
     constraints.append(diff @ cone == objective)
 
     # 1. x1 must lie on facet_1 and x2 must lie on facet_2
-    for v in T:
+    for v in T.normal_vectors:
         if any(np.array_equal(v, e) for e in facet_1):
             constraints.append(x1 @ v == 1)
         else:
@@ -264,7 +262,7 @@ def maximize_one_segment(T, K, facet_1, facet_2, cone):
             constraints.append(x2 @ v <= 1)
 
     #2. diff must lie in cone
-    for k in K:
+    for k in K.normal_vectors:
         constraints.append(diff @ cone >= diff @ k)
 
     prob = cp.Problem(cp.Maximize(objective), constraints)
@@ -287,7 +285,8 @@ def find_cones_for_facet_pair(facet_list, T, K):
                 cones = []
                 for cone in K.normal_vectors:
                     try:
-                        max_length = maximize_one_segment(T, K, facet_list[i], facet_list[j], cone)
+                        max_length = maximize_one_segment(T=T, K=K, facet_1=facet_list[i], facet_2=facet_list[j],
+                                                          cone=cone)
                     except:
                         continue
                     epsilon = 1e-6

@@ -1,8 +1,8 @@
 import random
 import numpy as np
-from Models.BilliardSystem import BilliardSystem
-from Models.Polytope import Polytope
-from Services.CapacityService import is_line_in_cone
+from Project.Models.BilliardSystem import BilliardSystem
+from Project.Models.Polytope import Polytope
+from Project.Services.Calculation.CapacityService import is_line_in_cone
 
 
 def get_random_billiard_system(t_sides, k_sides, dim):

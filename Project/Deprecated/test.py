@@ -1,4 +1,4 @@
-from optimizer import *
+from Project.Deprecated.optimizer import *
 from visualizer import *
 
 # print(check_if_line_in_cone(np.array([[1, 0], [0, 1], [-1, -1]]))) # True

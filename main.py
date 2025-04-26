@@ -1,6 +1,6 @@
-from Services import RatioService
-from Services.RandomBilliardSystemService import get_random_billiard_system
-from Services.FileWriterService import FileWriterService
+from Project.Services.Calculation import RatioService
+from Project.Services.Example_Generation.RandomBilliardSystemService import get_random_billiard_system
+from Project.Services.Output.FileWriterService import FileWriterService
 import sys
 
 if __name__ == '__main__':

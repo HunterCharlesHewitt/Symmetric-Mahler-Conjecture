@@ -1,6 +1,6 @@
 import math
 
-from Services import VolumeService, CapacityService
+from Project.Services.Calculation import VolumeService, CapacityService
 
 
 def set_billiard_system_ratio(billiard_system):

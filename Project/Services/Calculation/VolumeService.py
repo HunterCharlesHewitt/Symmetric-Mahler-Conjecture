@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.spatial import HalfspaceIntersection
-from Models.Polytope import Polytope
+from Project.Models.Polytope import Polytope
 
 
 def get_volume_k_metric(K, T):
