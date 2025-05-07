@@ -1,4 +1,6 @@
 import math
+import time
+
 from itertools import product
 from Project.Models.Capacity import Capacity
 from itertools import combinations, permutations
@@ -7,20 +9,24 @@ import numpy as np
 import random
 
 from Project.Services.Calculation.LengthService import K_length
-
+from Project.Services.Calculation.CustomLPSolverService import CustomLPSolverService
+from Project.Services.Calculation.OptimizeLengthLP import OptimizeLengthLP, calculate_b_length, calculate_c_length
+from Project.Services.Calculation.GurobiSolver import gurobi_solver
 
 def get_capacity(T, K, volume_k_metric, stop_num=0):
-    stop_num = get_cube_capacity_ratio(T.dim) if stop_num is None else stop_num
+    dim = T.dim
+    if stop_num is None:
+        stop_num = get_cube_capacity_ratio(dim) * volume_k_metric
     cap = Capacity(length=float('inf'), orbit=None, cones=None)
     orbits, facet_list = get_all_untranslatable_orbits(T)
     cones_for_facet_pair = find_cones_for_facet_pair(facet_list=facet_list, T=T, K=K)
-    for laziness, orbit in product((0.99, 0.95, 0.9, 0.8, 0), orbits):
-        curr_length, cone = optimize_over_cones(orbit, T, K, facet_list, cones_for_facet_pair, laziness)
-        if curr_length < cap.length:
-            cap = Capacity(length=curr_length, orbit=orbit, cones=cone)
-            if curr_length ** T.dim / volume_k_metric < stop_num:
-                return cap
-    return cap
+    laziness = 0
+    As = []
+    for orbit in orbits:
+        orbit_As, b, c = get_lps_for_orbit(orbit, T, K, facet_list, cones_for_facet_pair, laziness)
+        As.extend(orbit_As)
+    _, cap = gurobi_solver(As, b, c, dim, stop_num)
+    return Capacity(length=cap, orbit=None, cones=None)
 
 
 # See OEIS A049606
@@ -31,16 +37,18 @@ def get_cube_capacity_ratio(dim):
 
 
 def get_all_untranslatable_orbits(T):
-    all_facets = get_all_facets(T)
+    # all_facets = get_all_facets(T)
+    all_facets = [ [v] for v in T.normal_vectors]
     all_orbits = list(combinations(all_facets, T.dim + 1))
     untranslatable_orbits = []
     facets_included = []
+    LP_solver = CustomLPSolverService()
     for orbit in all_orbits:
         if does_orbit_support_another_orbit(orbit, untranslatable_orbits):
             continue
         vects_in_orbit = get_unique_vectors_from_orbit(orbit)
         # if vects_in_orbit is a line but a subset of it is as well, then it is inefficient to include it.
-        if not is_line_in_cone(vects_in_orbit):
+        if not LP_solver.is_line_in_cone(np.array(vects_in_orbit)):
             continue
         append_orbit_permutations_that_fix_last_element(orbit, untranslatable_orbits)
         # check if we can add to facets_included
@@ -73,11 +81,12 @@ def get_all_facets(T):
         try:
             if is_facet_valid(s, T):
                 rv.append(s)
-        except:
+        except Exception as e:
             # it would bad if an error caused the program to overcredit a species.
             print("Error")
             print(T.normal_vectors)
             rv.append(s)
+            raise e
     return rv
 
 
@@ -118,10 +127,7 @@ def is_line_in_cone(V, epsilon=1e-6):
     return prob.status != cp.OPTIMAL
 
 
-def optimize_over_cones(orbit, T, K, facet_list, cones_for_facet_pair, laziness=0):
-    min_val = float('inf')
-    min_cones = None
-
+def get_lps_for_orbit(orbit, T, K, facet_list, cones_for_facet_pair, laziness=0):
     possible_cones = []
     for i, cur_facet in enumerate(orbit):
         past_facet = orbit[(i - 1) % len(orbit)]
@@ -142,92 +148,24 @@ def optimize_over_cones(orbit, T, K, facet_list, cones_for_facet_pair, laziness=
     if not all_cones:
         raise Exception("Unimplemented. all_cones is empty. This might be due to repeating edges")
 
-    for cones in all_cones:
-        if random.random() > laziness:
-            val, _ = optimize_k_length(orbit, cones, T, K, verbose=False)
-            if val < min_val:
-                min_val = val
-                min_cones = cones
+    # print(f"We need to solve {len(all_cones)} linear programs of shape {calculate_b_length(T.dim, T, K)} by {calculate_c_length(T.dim)}")
 
-    return min_val, min_cones
+    As = []
+    b = []
+    c = []
 
+    some_cones = all_cones
+    if laziness > 0:
+        some_cones = random.sample(all_cones, int(len(all_cones) * laziness))
 
-# orbit = (E1..Em) is a list of convex sets which lie on the boundary of T and have codimention at least 1.
-# cones = (C1..Cm) is a list of vectors in K.
-# T is the table and K defines the asymetric norm.
+    for cones in some_cones:
+        lp = OptimizeLengthLP(orbit, cones, T, K)
+        if len(b) == 0:
+            b = lp.b
+            c = lp.c
+        As.append(lp.A)
 
-# we want to minimize the length (wrt the norm defined by K) of an orbit containing
-# points x1..xm for each xi in Ei such that x{i+1}-xi lies in Ci.
-
-# a point v is said to be in the cone Ci if <v, Ci> >= <v, u> for all u in K.
-
-# For each Ei, E{i+1}, we need to find points xi, x{i+1} that minimize <x{i+1}-xi, Ci>
-# such that x{i+1}-xi is in Ci.
-def optimize_k_length(orbit, cones, T, K, verbose=False):
-    points_in_orbit = [cp.Variable(K.dim) for _ in orbit]
-    orbit_len = len(orbit)
-    constraints = []
-
-    objective = get_min_of_sum_of_k_lengths_between_consecutive_points(K, constraints, orbit_len, verbose,
-                                                                       points_in_orbit)
-
-    get_constraints(K, T, cones, constraints, orbit_len, orbit, verbose, points_in_orbit)
-
-    prob = cp.Problem(cp.Minimize(objective), constraints)
-    result = prob.solve()
-
-    verbose and print(prob.status, result)
-
-    if prob.status != cp.OPTIMAL:
-        return float('inf'), None
-
-    optimal_points = [x.value for x in points_in_orbit]
-    total_length = sum(K_length(optimal_points[i], optimal_points[(i + 1) % orbit_len], K) for i in range(orbit_len))
-    return total_length, optimal_points
-
-
-def get_constraints(K, T, cones, constraints, m, orbit, verbose, xs):
-    append_constraints_for_points_in_corresponding_convex_set(T, constraints, orbit, verbose, xs)
-    append_maximal_constraints(K, cones, constraints, m, verbose, xs)
-
-
-def get_min_of_sum_of_k_lengths_between_consecutive_points(K, constraints, len_orbit, verbose, xs):
-    objective = 0
-    for i in range(len_orbit):
-        past_i = (i - 1) % len_orbit
-        diff = xs[i] - xs[past_i]
-        # For each vector k in K, we need diff·k ≤ t where t is the length
-        t = cp.Variable()  # This represents the K-norm of the difference
-        objective += t
-        # Add constraints that ensure t bounds the K-norm
-        for k in K.normal_vectors:
-            verbose and print(f"This constraint is x{i} - x{(i - 1) % len_orbit} @ {k} <= length")
-            constraints.append(diff @ k <= t)
-    return objective
-
-
-def append_maximal_constraints(K, cones, constraints, len_orbit, verbose, xs):
-    for i in range(len_orbit):
-        past_i = (i - 1) % len_orbit
-        diff = xs[i] - xs[past_i]
-        c = cones[i]
-        # For each vector k in K, the projection onto c must be maximal
-        for k in K.normal_vectors:
-            verbose and print(
-                f"This constraint is x{i} - x{(i - 1) % len_orbit} @ {c} >= x{i} - x{(i - 1) % len_orbit} @ {k}")
-            constraints.append(diff @ c >= diff @ k)
-
-
-def append_constraints_for_points_in_corresponding_convex_set(T, constraints, orbit, verbose, xs):
-    for i, (x, E) in enumerate(zip(xs, orbit)):
-        for v in T.normal_vectors:
-            if any(np.array_equal(v, e) for e in E):
-                verbose and print(f"This constraint is x{i} @ {v} == 1")
-                constraints.append(x @ v == 1)
-            else:
-                verbose and print(f"This constraint is x{i} @ {v} <= 1")
-                constraints.append(x @ v <= 1)
-
+    return As, b, c
 
 # a cone should be an array of m vectors.
 def get_all_cones_of_length_n(polytope, n):
