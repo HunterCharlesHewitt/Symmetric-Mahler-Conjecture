@@ -3,6 +3,12 @@ import numpy as np
 from Project.Services.Calculation.LinearProgram import LinearProgram
 from Project.Models.Polytope import Polytope
 
+def calculate_b_length(dim, T, K):
+    return 2*(dim+1) + len(T.normal_vectors)*(dim+1) + (len(K.normal_vectors)-1)*(dim+1)
+
+def calculate_c_length(dim):
+    return (dim+1)**2
+
 class OptimizeLengthLP(LinearProgram):
 
     def add_constraints_on_ts(self, cones):
@@ -38,12 +44,16 @@ class OptimizeLengthLP(LinearProgram):
         # x_i - x_{i-1} @ Kfacet <= x_i - x_{i-1} @ cone_i
         # x_i - x_{i-1} @ Kfacet - cone_i <= 0
         # sum_{j=1}^n (x_i_j - x_{i-1}_j) * (Kfacet_j - cone_i_j) <= 0
-        for index, facet in enumerate(K.normal_vectors):
-            for i in range(self.n+1):
+        for i in range(self.n+1):
+            adj = 0
+            for index, facet in enumerate(K.normal_vectors):
+                if np.equal(facet, cones[i]).all():
+                    adj = 1
+                    continue
                 past = (i-1) % (self.n+1)
                 for j in range(self.n):
-                    self.A[2*(self.n + 1) + self.m*(self.n + 1) + index*(self.n + 1) + i, i*(self.n) + j] = facet[j] - cones[i][j]
-                    self.A[2*(self.n + 1) + self.m*(self.n + 1) + index*(self.n + 1) + i, past*(self.n) + j] = -facet[j] + cones[i][j]
+                    self.A[2*(self.n + 1) + self.m*(self.n + 1) + (index-adj)*(self.n + 1) + i, i*(self.n) + j] = facet[j] - cones[i][j]
+                    self.A[2*(self.n + 1) + self.m*(self.n + 1) + (index-adj)*(self.n + 1) + i, past*(self.n) + j] = -facet[j] + cones[i][j]
 
     def __init__(self, orbit, cones, T:Polytope, K:Polytope):
         # Each time we run optimize_k_length, it is in the exact same format.
@@ -64,8 +74,8 @@ class OptimizeLengthLP(LinearProgram):
         self.problem_solved = False
 
         # The number of rows is the number of constraints, which is 2(n+1) + (m-1)(n+1) + k(n+1)
-        self.A = np.zeros((2*(self.n+1) + self.m*(self.n+1) + self.k*(self.n+1), (self.n+1)**2))
-        self.b = np.zeros((2*(self.n+1) + self.m*(self.n+1) + self.k*(self.n+1)))
+        self.A = np.zeros((2*(self.n+1) + self.m*(self.n+1) + (self.k-1)*(self.n+1), (self.n+1)**2))
+        self.b = np.zeros((2*(self.n+1) + self.m*(self.n+1) + (self.k-1)*(self.n+1)))
 
         # We want to mimimize the sum of the t_i's
         self.c = np.zeros((self.n+1)**2)
@@ -76,28 +86,7 @@ class OptimizeLengthLP(LinearProgram):
         self.add_equalality_constraints_on_xs(orbit)
         self.add_inequality_constraints_on_xs(T)
         self.add_inequality_constraints_on_differences(cones, K)
-
-        print(self.A)
-        print("AAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBB")
-        print(self.b)
-        print("BBBBBBBBBBBBBBBBBBBBBCCCCCCCCCCCCCCCCCCCCCCCCCCCC")
-        print(self.c)
-
-    def solve(self):
-        import cvxpy as cp
-        # Mimimize c^T x subject to A x <= b, x >= 0
-        x = cp.Variable((self.n+1)**2)
-        objective = cp.Minimize(cp.vdot(self.c, x))
-        constraints = [self.A @ x <= self.b]
-        problem = cp.Problem(objective, constraints)
-        problem.solve()
-        if problem.status == cp.OPTIMAL:
-            self.problem_solved = True
-            self.solution = x.value
-            return problem.value, x.value
-        else:
-            self.problem_solved = False
-            return float("inf"), None
+        
 
         
 

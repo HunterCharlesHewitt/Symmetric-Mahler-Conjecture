@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 
 import numpy as np
+import cvxpy as cp
+
 
 class LinearProgram(ABC):
     def __init__(self):
@@ -9,9 +11,20 @@ class LinearProgram(ABC):
         self.b = []
         self.c = []
 
-    @abstractmethod
     def solve(self):
-        pass
+        # Mimimize c^T x subject to A x <= b
+        x = cp.Variable(self.c.shape[0])
+        objective = cp.Minimize(cp.vdot(self.c, x))
+        constraints = [self.A @ x <= self.b]
+        problem = cp.Problem(objective, constraints)
+        problem.solve()
+        if problem.status == cp.OPTIMAL:
+            self.problem_solved = True
+            self.solution = x.value
+            return problem.value, x.value
+        else:
+            self.problem_solved = False
+            return float("inf"), None
 
     def combine(self, other):
         # creates the diagonal matrix
