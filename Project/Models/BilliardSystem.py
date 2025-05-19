@@ -5,3 +5,4 @@ class BilliardSystem:
         self.ratio = None
         self.volume_k_metric = None
         self.capacity_k_of_t = None
+        self.trajectory = None
