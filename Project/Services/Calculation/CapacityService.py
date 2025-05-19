@@ -15,9 +15,6 @@ from Project.Services.Calculation.GurobiSolver import gurobi_solver
 
 def get_capacity(T, K, volume_k_metric, stop_num=0):
     dim = T.dim
-    if stop_num is None:
-        stop_num = get_cube_capacity_ratio(dim) * volume_k_metric
-    cap = Capacity(length=float('inf'), orbit=None, cones=None)
     orbits, facet_list = get_all_untranslatable_orbits(T)
     cones_for_facet_pair = find_cones_for_facet_pair(facet_list=facet_list, T=T, K=K)
     laziness = 0
@@ -26,7 +23,7 @@ def get_capacity(T, K, volume_k_metric, stop_num=0):
         orbit_As, b, c = get_lps_for_orbit(orbit, T, K, facet_list, cones_for_facet_pair, laziness)
         As.extend(orbit_As)
     _, cap = gurobi_solver(As, b, c, dim, stop_num)
-    return Capacity(length=cap, orbit=None, cones=None)
+    return Capacity(length=cap, orbit=None, cones=None, trajectory=None)
 
 
 # See OEIS A049606
@@ -55,6 +52,9 @@ def get_all_untranslatable_orbits(T):
         for facet in orbit:  # adding new facet to facets_included
             if all(not facets_equal(facet, included_facet) for included_facet in facets_included):
                 facets_included.append(facet)
+    print("ORBITS: ", len(untranslatable_orbits))
+    # print(untranslatable_orbits)
+    # print("________________________________________________________________________________")
     return untranslatable_orbits, facets_included
 
 
@@ -148,7 +148,7 @@ def get_lps_for_orbit(orbit, T, K, facet_list, cones_for_facet_pair, laziness=0)
     if not all_cones:
         raise Exception("Unimplemented. all_cones is empty. This might be due to repeating edges")
 
-    # print(f"We need to solve {len(all_cones)} linear programs of shape {calculate_b_length(T.dim, T, K)} by {calculate_c_length(T.dim)}")
+    print(f"We need to solve {len(all_cones)} linear programs of shape {calculate_b_length(T.dim, T, K)} by {calculate_c_length(T.dim)}")
 
     As = []
     b = []
