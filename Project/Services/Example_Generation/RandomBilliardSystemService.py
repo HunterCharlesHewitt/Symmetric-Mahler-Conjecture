@@ -19,6 +19,6 @@ def get_random_billiard_system(t_sides, k_sides, dim, normalized=False):
             K.normal_vectors = K.normal_vectors / np.linalg.norm(K.normal_vectors, axis=1, keepdims=True)
     # Taking the dual or the dual of the dual to ensure there are no redundant facets
     # If normalized is true, we want the vertecies of T and the dual of K to be on the unit sphere, like in the Hiam-Ostrov counterexample
-    T = get_polar_dual(T)
-    K = get_polar_dual(K)
+    T = get_polar_dual(get_polar_dual(T))
+    K = get_polar_dual(get_polar_dual(K))
     return BilliardSystem(T=T, K=K)
