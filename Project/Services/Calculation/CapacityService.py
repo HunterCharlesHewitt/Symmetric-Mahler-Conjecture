@@ -9,7 +9,6 @@ import numpy as np
 import random
 
 from Project.Services.Calculation.LengthService import K_length
-from Project.Services.Calculation.CustomLPSolverService import CustomLPSolverService
 from Project.Services.Calculation.OptimizeLengthLP import OptimizeLengthLP, calculate_b_length, calculate_c_length
 from Project.Services.Calculation.GurobiSolver import gurobi_solver
 
@@ -39,13 +38,14 @@ def get_all_untranslatable_orbits(T):
     all_orbits = list(combinations(all_facets, T.dim + 1))
     untranslatable_orbits = []
     facets_included = []
-    LP_solver = CustomLPSolverService()
+    print("ALL FACETS: ", len(all_facets))
+    print("ALL ORBITS: ", len(all_orbits))
     for orbit in all_orbits:
         if does_orbit_support_another_orbit(orbit, untranslatable_orbits):
             continue
         vects_in_orbit = get_unique_vectors_from_orbit(orbit)
         # if vects_in_orbit is a line but a subset of it is as well, then it is inefficient to include it.
-        if not LP_solver.is_line_in_cone(np.array(vects_in_orbit)):
+        if not is_line_in_cone(np.array(vects_in_orbit)):
             continue
         append_orbit_permutations_that_fix_last_element(orbit, untranslatable_orbits)
         # check if we can add to facets_included
