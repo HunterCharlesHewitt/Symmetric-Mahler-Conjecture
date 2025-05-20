@@ -4,7 +4,7 @@ from Project.Services.Calculation.VolumeService import *
 from ExamplePolytopes import *
 
 
-class VolumeServiceTest(unittest.TestCase):
+class TestVolumeService(unittest.TestCase):
     bs = get_billiard_system_from_hiam_ostrover_counterexample()
 
     def test_get_volume_k_metric_gets_correct_for_hiam_ostrover(self):

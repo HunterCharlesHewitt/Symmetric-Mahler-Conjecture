@@ -5,7 +5,7 @@ import numpy as np
 from Project.Models.Polytope import Polytope
 
 
-class PolytopeTest(unittest.TestCase):
+class TestPolytope(unittest.TestCase):
     def test_polytope_constructor_sets_values(self):
         # Setup
         normal_vectors = np.array([[-0.39275834, -0.21369186], [0.97887142, -0.7326133], [-0.2209859, 0.91339311]])
