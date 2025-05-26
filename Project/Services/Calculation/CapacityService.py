@@ -8,9 +8,8 @@ import cvxpy as cp
 import numpy as np
 import random
 
-from Project.Services.Calculation.LengthService import K_length
-from Project.Services.Calculation.OptimizeLengthLP import OptimizeLengthLP, calculate_b_length, calculate_c_length
-from Project.Services.Calculation.GurobiSolver import gurobi_solver
+from Project.Services.Calculation.OptimizeLengthLP import OptimizeLengthLP
+from Project.Services.Calculation.GurobiSolver import gurobi_solver, gurobi_feasability
 
 def get_capacity(T, K, volume_k_metric, stop_num=0):
     dim = T.dim
