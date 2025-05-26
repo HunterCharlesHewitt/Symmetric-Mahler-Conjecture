@@ -21,7 +21,7 @@ def get_capacity(T, K, volume_k_metric, stop_num=0):
     for orbit in orbits:
         orbit_As, b, c = get_lps_for_orbit(orbit, T, K, facet_list, cones_for_facet_pair, laziness)
         As.extend(orbit_As)
-    _, cap = gurobi_solver(As, b, c, dim, stop_num)
+    xs, cap = gurobi_solver(As, b, c, dim, stop_num)
     return Capacity(length=cap, orbit=None, cones=None, trajectory=None)
 
 
@@ -38,8 +38,6 @@ def get_all_untranslatable_orbits(T):
     all_orbits = list(combinations(all_facets, T.dim + 1))
     untranslatable_orbits = []
     facets_included = []
-    print("ALL FACETS: ", len(all_facets))
-    print("ALL ORBITS: ", len(all_orbits))
     for orbit in all_orbits:
         if does_orbit_support_another_orbit(orbit, untranslatable_orbits):
             continue
@@ -52,7 +50,7 @@ def get_all_untranslatable_orbits(T):
         for facet in orbit:  # adding new facet to facets_included
             if all(not facets_equal(facet, included_facet) for included_facet in facets_included):
                 facets_included.append(facet)
-    print("ORBITS: ", len(untranslatable_orbits))
+    # print("ORBITS: ", len(untranslatable_orbits))
     # print(untranslatable_orbits)
     # print("________________________________________________________________________________")
     return untranslatable_orbits, facets_included
@@ -158,7 +156,7 @@ def get_lps_for_orbit(orbit, T, K, facet_list, cones_for_facet_pair, laziness=0)
     if not all_cones:
         raise Exception("Unimplemented. all_cones is empty. This might be due to repeating edges")
 
-    print(f"We need to solve {len(all_cones)} linear programs of shape {calculate_b_length(T.dim, T, K)} by {calculate_c_length(T.dim)}")
+    # print(f"We need to solve {len(all_cones)} linear programs of shape {calculate_b_length(T.dim, T, K)} by {calculate_c_length(T.dim)}")
 
     As = []
     b = []
