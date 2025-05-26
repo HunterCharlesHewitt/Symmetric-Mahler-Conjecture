@@ -3,7 +3,7 @@ from ExamplePolytopes import *
 from Project.Services.Calculation.CapacityService import *
 
 
-class CapacityServiceTest(unittest.TestCase):
+class TestCapacityService(unittest.TestCase):
     bs = get_billiard_system_from_hiam_ostrover_counterexample()
 
 

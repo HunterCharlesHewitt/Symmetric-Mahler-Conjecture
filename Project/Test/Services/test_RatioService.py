@@ -6,7 +6,7 @@ from Project.Models.BilliardSystem import BilliardSystem
 from unittest.mock import patch
 
 
-class RatioServiceTest(unittest.TestCase):
+class TestRatioService(unittest.TestCase):
 
     @patch('Project.Services.Calculation.CapacityService.get_capacity')
     @patch('Project.Services.Calculation.VolumeService.get_volume_k_metric')

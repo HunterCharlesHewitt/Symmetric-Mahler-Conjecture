@@ -6,7 +6,7 @@ from Project.Models.BilliardSystem import BilliardSystem
 from Project.Models.Polytope import Polytope
 
 
-class BilliardSystemTest(unittest.TestCase):
+class TestBilliardSystem(unittest.TestCase):
     def test_BilliardSystem_constructor_sets_values(self):
         # Setup
         dim = 2
