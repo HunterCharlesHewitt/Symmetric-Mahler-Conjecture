@@ -53,4 +53,23 @@ def gurobi_solver(As, b, c, dim, stop_num=0):
             results.append((idx, "error", None, float("inf")))
     min_result = min(results, key=lambda x: x[3])
 
-    return min_result[0], min_result[3]
+    return min_result[2], min_result[3]
+
+def gurobi_feasability(A, b):
+    # Create a Gurobi model
+    model = gp.Model()
+    model.setParam('OutputFlag', 0)  # Suppress solver output
+
+    # Add variables (unbounded in this example)
+    n = A.shape[1]
+    x = model.addMVar(shape=n, name="x", lb=-GRB.INFINITY, ub=GRB.INFINITY)
+
+    # Add constraints: Ax <= b
+    model.addConstr(A @ x <= b)
+
+    # No need to set an objective; Gurobi defaults to minimizing 0
+
+    # Optimize the model
+    model.optimize()
+
+    return model.Status == GRB.OPTIMAL
