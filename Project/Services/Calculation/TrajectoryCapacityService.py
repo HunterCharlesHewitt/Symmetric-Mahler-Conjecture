@@ -17,7 +17,7 @@ def get_trajectory_capacity(T, K):
     initial_phase_space_maps: list[PhaseSpaceMap] = generate_initial_phase_space_maps(phase_spaces)
     fix_T = False
     graded_phase_space_maps = [initial_phase_space_maps]
-    for i in range((dim+0)*2):
+    for i in range((dim+1)*2):
         graded_phase_space_maps.append(expatend_phase_space_maps(graded_phase_space_maps[-1], T, K_dual, fix_T))
         fix_T = not fix_T
     
@@ -138,50 +138,3 @@ def expatend_phase_space_maps(starting_maps, T, K_dual, fix_T):
                 if dot(T_vect, cur_k_perp) > 1e-9: # making sure cur_k_perp is not in same direction as T_vect
                     rv.append(affine_map.left_compose(affine_map.output_phase_space.map_phi_K_x_id(new_T_normal_vect=T_vect)))
     return rv
-
-T_vectors = np.array([[0.,1.], [1.,0.], [0.,-1.], [-1.,0.]])
-K_vectors = np.array([[1.,0.], [0.,1.], [-1.,0.], [0.,-1.]])
-
-T = Polytope(normal_vectors=T_vectors, dim=2)
-K = Polytope(normal_vectors=K_vectors, dim=2)
-K_dual = get_polar_dual(K)
-
-b4 = PhaseSpace(t_vect_perp=np.matrix([0.,1.]).T, k_vect_perp=np.matrix([-1.,-1.]).T)
-d4 = PhaseSpace(t_vect_perp=np.matrix([0.,-1.]).T, k_vect_perp=np.matrix([-1.,-1.]).T)
-d2 = PhaseSpace(t_vect_perp=np.matrix([0.,-1.]).T, k_vect_perp=np.matrix([1.,1.]).T)
-b2 = PhaseSpace(t_vect_perp=np.matrix([0.,1.]).T, k_vect_perp=np.matrix([1.,1.]).T)
-
-map_1 = b4.map_phi_K_x_id(np.matrix([0.,-1.]).T)
-map_2 = d4.map_id_x_phi_T(np.matrix([1.,1.]).T)
-map_3 = d2.map_phi_K_x_id(np.matrix([0.,1.]).T)
-map_4 = b2.map_id_x_phi_T(np.matrix([-1.,-1.]).T)
-
-composed_map_1 = map_1.left_compose(after_map=map_2)
-composed_map_2 = composed_map_1.left_compose(after_map=map_3)
-composed_map_3 = composed_map_2.left_compose(after_map=map_4)
-
-# b4 = PhaseSpace(t_vect_perp=np.matrix([0.,1.]).T, k_vect_perp=np.matrix([-1.,-1.]).T)
-# a4 = PhaseSpace(t_vect_perp=np.matrix([-1.,0.]).T, k_vect_perp=np.matrix([-1.,-1.]).T)
-# a3 = PhaseSpace(t_vect_perp=np.matrix([-1.,0.]).T, k_vect_perp=np.matrix([1.,-1.]).T)
-# d3 = PhaseSpace(t_vect_perp=np.matrix([0.,-1.]).T, k_vect_perp=np.matrix([1.,-1.]).T)
-# d2 = PhaseSpace(t_vect_perp=np.matrix([0.,-1.]).T, k_vect_perp=np.matrix([1.,1.]).T)
-# c2 = PhaseSpace(t_vect_perp=np.matrix([1.,0.]).T, k_vect_perp=np.matrix([1.,1.]).T)
-# c1 = PhaseSpace(t_vect_perp=np.matrix([1.,0.]).T, k_vect_perp=np.matrix([-1.,1.]).T)
-# b1 = PhaseSpace(t_vect_perp=np.matrix([0.,1.]).T, k_vect_perp=np.matrix([-1.,1.]).T)
-
-# map_1 = b4.map_phi_K_x_id(np.matrix([-1.,0.]).T)
-# map_2 = a4.map_id_x_phi_T(np.matrix([1.,-1.]).T)
-# map_3 = a3.map_phi_K_x_id(np.matrix([0.,-1.]).T)
-# map_4 = d3.map_id_x_phi_T(np.matrix([1.,1.]).T)
-# map_5 = d2.map_phi_K_x_id(np.matrix([1., 0.]).T)
-# map_6 = c2.map_id_x_phi_T(np.matrix([-1.,1.]).T)
-# map_7 = c1.map_phi_K_x_id(np.matrix([0.,1.]).T)
-# map_8 = b1.map_id_x_phi_T(np.matrix([-1.,-1.]).T)
-
-# composed_map_1 = map_1.left_compose(after_map=map_2)
-# composed_map_2 = composed_map_1.left_compose(after_map=map_3)
-# composed_map_3 = composed_map_2.left_compose(after_map=map_4)
-# composed_map_4 = composed_map_3.left_compose(after_map=map_5)
-# composed_map_5 = composed_map_4.left_compose(after_map=map_6)
-# composed_map_6 = composed_map_5.left_compose(after_map=map_7)
-# composed_map_7 = composed_map_6.left_compose(after_map=map_8)
