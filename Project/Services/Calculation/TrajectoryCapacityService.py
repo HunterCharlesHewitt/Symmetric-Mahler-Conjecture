@@ -18,10 +18,11 @@ def get_trajectory_capacity(T, K):
     fix_T = False
     graded_phase_space_maps = [initial_phase_space_maps]
     for i in range((dim+1)*2):
-        graded_phase_space_maps.append(expatend_phase_space_maps(graded_phase_space_maps[-1], T, K_dual, fix_T))
+        graded_phase_space_maps.append(expandend_phase_space_maps(graded_phase_space_maps[-1], T, K_dual, fix_T))
         fix_T = not fix_T
     
     phase_space_maps = []
+    #TODO there is probably a simpler way to do the nested fors below, I will change later
     for maps_list in graded_phase_space_maps[1:]:
         for phase_space_map in maps_list:
             phase_space_maps.append(phase_space_map)
@@ -121,7 +122,7 @@ def generate_initial_phase_space_maps(phace_spaces):
     return rv
 
 
-def expatend_phase_space_maps(starting_maps, T, K_dual, fix_T):
+def expandend_phase_space_maps(starting_maps, T, K_dual, fix_T):
     rv = []
     if(fix_T):
         for affine_map in starting_maps:
