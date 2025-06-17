@@ -42,19 +42,26 @@ def get_slope():
     pass
 
 
-def draw_T_bounce(new_bounce_starting_position, slope):
-    point = [new_bounce_starting_position[0], new_bounce_starting_position[1]]
-    while T_shape.contains_point(axs[0].transData.transform((point[0], point[1]))):
-        add_frame_for_axis(axs_1_pts, point[0], point[1], xlist_T, ylist_T)
-        if slope < 0:
-            point[0] -= X_VALUE_CHANGE_RATE
-        elif slope > 0:
-            point[0] += X_VALUE_CHANGE_RATE
-        else:
-            point[1] += X_VALUE_CHANGE_RATE
+def draw_T_bounce(new_bounce_starting_position, slope, axs_pts, xList, yList):
+    curr_point = [new_bounce_starting_position[0], new_bounce_starting_position[1]]
+    while T_shape.contains_point(axs[0].transData.transform((curr_point[0], curr_point[1]))):
+        add_frame_for_axis(axs_pts, curr_point[0], curr_point[1], xlist_T, ylist_T)
+        if slope == np.inf:
+            curr_point[1] += COORD_CHANGE_RATE
             continue
-        point[1] = slope * (point[0] - new_bounce_starting_position[0]) + new_bounce_starting_position[1]
-    return [xlist_T[-1], ylist_T[-1]]
+        elif slope == -1 * np.inf:
+            curr_point[1] -= COORD_CHANGE_RATE
+            continue
+        elif slope < 0:
+            curr_point[0] -= COORD_CHANGE_RATE
+        elif slope > 0 and slope != -1 * np.inf:
+            curr_point[0] += COORD_CHANGE_RATE
+        else:
+            #TODO This is incorrect
+            curr_point[1] += COORD_CHANGE_RATE
+            continue
+        curr_point[1] = slope * (curr_point[0] - new_bounce_starting_position[0]) + new_bounce_starting_position[1]
+    return [xList[-1], yList[-1]]
 
 
 if __name__ == '__main__':
@@ -62,7 +69,7 @@ if __name__ == '__main__':
     FRAMES_PER_SECOND = 30
     AXIS_MIN = -5
     AXIS_MAX = 5
-    X_VALUE_CHANGE_RATE = 3 / 70
+    COORD_CHANGE_RATE = 3 / 70
     STARTING_T_POSITION = [0, -3]
     STARTING_T_ANGLE = 150
     STARTING_K_POSITION = (-1.5, 1.5 * tan(np.pi / 3) - 3)
@@ -85,20 +92,16 @@ if __name__ == '__main__':
         xlist_T = []
         ylist_T = []
         slope = np.tan(STARTING_T_ANGLE * np.pi / 180)
-        new_bounce_starting_position = draw_T_bounce(STARTING_T_POSITION, slope)
+        curr_t_bounce_starting_position = draw_T_bounce(STARTING_T_POSITION, slope=slope, axs_pts=axs_1_pts, xList=xlist_T, yList=ylist_T)
+
+        # curr_k_bounce_starting_position = draw_T_bounce(STARTING_K_POSITION, slope)
 
         xlist_K = []
         ylist_K = []
         for xval in np.linspace(np.cos(np.pi / 3) * 3 - 3, np.cos(np.pi / 3) * 3, 100):
             add_frame_for_axis(axs_2_pts, xval, np.sin(np.pi / 3) * 3 - 3, xlist_K, ylist_K)
 
-        point = [new_bounce_starting_position[0], new_bounce_starting_position[1]]
-        while T_shape.contains_point(axs[0].transData.transform((point[0], point[1]))):
-            add_frame_for_axis(axs_1_pts, point[0], point[1], xlist_T, ylist_T)
-            m = np.sqrt(3) / 3
-            point[0] += X_VALUE_CHANGE_RATE
-            point[1] = m * (point[0] - new_bounce_starting_position[0]) + new_bounce_starting_position[1]
-        new_bounce_starting_position = [xlist_T[-1], ylist_T[-1]]
+        curr_t_bounce_starting_position = draw_T_bounce(curr_t_bounce_starting_position, np.sqrt(3) / 3, axs_pts=axs_1_pts, xList=xlist_T, yList=ylist_T)
 
         xlist_K_new = []
         ylist_K_new = []
@@ -106,19 +109,12 @@ if __name__ == '__main__':
         for xval in np.linspace(np.cos(np.pi / 3) * 3, np.cos(np.pi / 3) * 3 - 3, 100):
             add_frame_for_axis(axs_2_pts_new, xval, np.sin(np.pi / 3) * 3 - 3, xlist_K_new, ylist_K_new)
 
-        point = [new_bounce_starting_position[0], new_bounce_starting_position[1]]
-        while T_shape.contains_point(axs[0].transData.transform((point[0], point[1]))):
-            add_frame_for_axis(axs_1_pts, point[0], point[1], xlist_T, ylist_T)
-            m = -1 * np.sqrt(3) / 3
-            point[0] -= X_VALUE_CHANGE_RATE
-            point[1] = m * (point[0] - new_bounce_starting_position[0]) + new_bounce_starting_position[1]
-        new_bounce_starting_position = [xlist_T[-1], ylist_T[-1]]
+        curr_t_bounce_starting_position = draw_T_bounce(curr_t_bounce_starting_position, -1 * np.sqrt(3) / 3, axs_pts=axs_1_pts, xList=xlist_T, yList=ylist_T)
 
         for yval in np.linspace(np.sin(np.pi / 3) * 3 - 3, -3, 75):
             add_frame_for_axis(axs_2_pts_new, np.cos(np.pi / 3) * 3 - 3, yval, xlist_K_new, ylist_K_new)
 
-        for yval in np.linspace(new_bounce_starting_position[1], -3, 75):
-            add_frame_for_axis(axs_1_pts, new_bounce_starting_position[0], yval, xlist_T, ylist_T)
+        curr_t_bounce_starting_position = draw_T_bounce(curr_t_bounce_starting_position, -1 * np.inf, axs_pts=axs_1_pts, xList=xlist_T, yList=ylist_T)
 
         axs_2_pts_new_new, = axs[1].plot([], [], color='#00FF00')
         xlist_K_new_new = []
