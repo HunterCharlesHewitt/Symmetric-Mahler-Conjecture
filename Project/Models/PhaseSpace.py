@@ -7,6 +7,13 @@ def dot(a,b):
     # a dot product on matricies with one column
     return np.sum(np.multiply(a,b))
 
+def matrix_equals(A, B):
+    for i in range(A.shape[0]):
+        for j in range(A.shape[1]):
+            if A[i, j] != B[i, j]:
+                return False
+    return True
+
 class PhaseSpace:
     def __init__(self, t_vect_perp, k_vect_perp):
         self.vect_dim = t_vect_perp.shape[0]
