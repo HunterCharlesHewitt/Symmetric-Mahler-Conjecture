@@ -1,15 +1,29 @@
+import random
+
 import numpy as np
 
 from Project.Services.Calculation.VolumeService import get_polar_dual
-from Project.Services.Calculation.LengthService import K_length
+from Project.Services.Calculation.LengthService import K_length, max_K_vector
 from Project.Models.PhaseSpace import *
 from Project.Models.Capacity import Capacity
 from Project.Models.Polytope import Polytope
 from Project.Services.Calculation.GurobiSolver import gurobi_solver_simple
 
+def tweak_K(K: Polytope, eps: float = 1e-6):
+    new_vectors = []
+    for vect in K.normal_vectors:
+        new_vect = vect.copy()
+        for i in range(len(new_vect)):
+            new_vect[i] += eps*(random.random()-0.5)
+        new_vectors.append(new_vect)
+    new_vectors = np.array(new_vectors)
+    return Polytope(normal_vectors=new_vectors, dim=K.dim)
+
 def get_trajectory_capacity(T, K):
     # T is the table K is the norm
-    K_dual = K
+    # K_dual = K
+    K_dual = get_polar_dual(K)
+    # K_dual = get_polar_dual(tweak_K(K, eps=1e-6))
 
     dim = T.dim
     # These can be thought of as nodes.
@@ -18,7 +32,7 @@ def get_trajectory_capacity(T, K):
     initial_phase_space_maps: list[PhaseSpaceMap] = generate_initial_phase_space_maps(phase_spaces)
     fix_T = False
     graded_phase_space_maps = [initial_phase_space_maps]
-    for i in range((dim+2)*2):
+    for i in range((dim+1)*2):
         graded_phase_space_maps.append(expatend_phase_space_maps(graded_phase_space_maps[-1], T, K_dual, fix_T))
         fix_T = not fix_T
     
@@ -30,24 +44,38 @@ def get_trajectory_capacity(T, K):
     min_length = float('inf')
     min_cone = None
     x = None
+    count = 0
     for phase_space_map in phase_space_maps:
         if phase_space_map.is_endomorphism():
             solution = find_fixed_points(phase_space_map)
+            print("Tried")
+            # phase_space_map.display_map()
             if solution["any_solution"]:
+                print("Found solution")
+                # print(solution)
+                particular = solution["particular"]
+                t_sol, k_sol = phase_space_map.input_phase_space.from_phase_space_coordinates(particular)
+                print(t_sol)
+                print(k_sol)
+                # if in_polytope(t_sol, T) and in_polytope(k_sol, K_dual):
+                #     phase_space_map.display_map()
+                #     print(1/0)
                 length = float('inf')
                 if solution["is_unique"]:
+                    count+=1
                     x = solution["particular"]
                     # fix_T starts out as true, so we only want the even indexes in phase_space_map_list
                     t_phase_space_map_list = phase_space_map.phase_space_map_list[::2]
-                    length = calculate_trajectory(T, K, x, t_phase_space_map_list)
+                    length = calculate_trajectory(T, K_dual, x, t_phase_space_map_list)
                 else:
+                    # phase_space_map.display_map()
                     A, b = get_lp_matrix(T, K_dual, phase_space_map, solution)
-                    c, offset = get_lp_objective(phase_space_map, solution)
+                    c, offset = get_lp_objective(K, phase_space_map, solution)
                     length, status, x = gurobi_solver_simple(A, b, c)
                     length += offset
-                if length < min_length:
-                    print("CCCCCCCCCCCCccc")
-                    print(length)
+                    # print(length)
+                    # phase_space_map.output_phase_space.display()
+                if length < min_length and length > 1e-9:
                     min_length = length
                     min_cone = phase_space_map.input_phase_space.k_vect_perp
     # TODO: I don't know if we should return all of this. x isn't really a trajectory, just a starting point.
@@ -64,6 +92,7 @@ def in_polytope(x, T: Polytope):
     return True
 
 def find_fixed_points(phase_space_map: PhaseSpaceMap):
+    # The reason we are using phase space coordinates is because we are only looking for solutions in the phase, space, not in R^2n
     # finds the fixed point in T.
     # x mapsto matrix @ x+shift
     # we want this in local coordinates
@@ -77,13 +106,16 @@ def find_fixed_points(phase_space_map: PhaseSpaceMap):
     A = np.block([[A_T, np.zeros((dim, dim))], [np.zeros((dim, dim)), A_K]])
     b_T = -phase_space_map.phase_space_T_shift
     b_K = -phase_space_map.phase_space_K_shift
-    b = np.concatenate([b_T, b_K], axis=0)
-    
+    b = np.concatenate([b_T, b_K], axis=0)    
     # Flatten b for lstsq (expects shape (n,))
     tolerance = 1e-6
     b_flat = np.asarray(b).flatten()
     x_particular = np.matrix(np.linalg.lstsq(A, b_flat, rcond=None)[0]).T
-    residual = np.linalg.norm(A @ x_particular - b_flat)
+    residual = np.linalg.norm(A @ x_particular - b)
+    # print("PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP")
+    # print(A)
+    # print(b)
+    # print(x_particular)
     rv = {
         "particular": None,
         "any_solution": False,
@@ -105,19 +137,35 @@ def find_fixed_points(phase_space_map: PhaseSpaceMap):
     rv["is_unique"] = False
     return rv
 
-def calculate_trajectory(T, K, x, t_phase_space_maps: list[PhaseSpaceMap]):
+def calculate_trajectory(T, K_dual, x, t_phase_space_maps: list[PhaseSpaceMap]):
     length = 0
     prev_t, prev_k = t_phase_space_maps[0].input_phase_space.from_phase_space_coordinates(x)
     cur_t = prev_t
     cur_k = prev_k
     for phase_space_map in t_phase_space_maps:
         val = phase_space_map.map_x(x)
+        # print(val)
+        # phase_space_map.output_phase_space.display()
+        # print("___")
+        # xt, xk = phase_space_map.input_phase_space.from_phase_space_coordinates(x)
+        # print(xt)
+        # print(xk)
+        # print("HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
         cur_t, cur_k = phase_space_map.output_phase_space.from_phase_space_coordinates(val)
+        # print(phase_space_map.T_matrix)
+        # print(phase_space_map.T_shift)
+        # print("IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII")
+        # print(cur_t)
+        # print(cur_k)
+        # print("EEEFFFFFFFFFFFFFFF")
         if not in_polytope(cur_t, T) or dot(cur_t, phase_space_map.output_phase_space.t_vect_perp) < 1-1e-6:
+            print("T not in")
             return float('inf')
-        if not in_polytope(cur_k, K) or dot(cur_k, phase_space_map.output_phase_space.k_vect_perp) < 1-1e-6:
+        if not in_polytope(cur_k, K_dual) or dot(cur_k, phase_space_map.output_phase_space.k_vect_perp) < 1-1e-6:
+            print("K not in")
             return float('inf')
-        length += float(K_length(prev_t, cur_t, K))
+        print("Both in")
+        length += float(K_length(prev_t, cur_t, get_polar_dual(K_dual)))
         prev_t = cur_t
     # if length < 1e-5:
     #     return float('inf')
@@ -186,11 +234,12 @@ def get_lp_matrix(T, K_dual, phase_space_map: PhaseSpaceMap, solution):
             b = np.concatenate([b, constraints_b], axis=0)
     return A, b
 
-def get_lp_objective(phase_space_map: PhaseSpaceMap, solution):
+def get_lp_objective(K, phase_space_map: PhaseSpaceMap, solution):
     # We want to minimize the K-length of the trajectory.
     # So every other map in ps_map list fixes K. We care about the maps where T changes
     # Since the first map is identity, there are an odd number of phase space maps, and we only want ones with odd index.
     particular_solution: np.matrix = solution["particular"]
+    ps_dim = particular_solution.shape[0]
     free_space_t: np.matrix = solution["t_nullspace"]
     free_space_k: np.matrix = solution["k_nullspace"]
     free_space_dim_t = free_space_t.shape[1]
@@ -201,18 +250,19 @@ def get_lp_objective(phase_space_map: PhaseSpaceMap, solution):
 
     # Multiplying by zero-dimentional matricies should be fine in theory.
     to_euclidian_matrix = phase_space_map.input_phase_space.t_basis @ free_space_t
-    to_euclidian_shift = phase_space_map.input_phase_space.t_basis @ particular_solution[:free_space_dim_t] + phase_space_map.input_phase_space.t_offset
+    to_euclidian_shift = phase_space_map.input_phase_space.t_basis @ particular_solution[:ps_dim//2] + phase_space_map.input_phase_space.t_offset
     prev_t_matrix = to_euclidian_matrix
     prev_t_shift = to_euclidian_shift
     c = np.zeros((free_space_dim_t+free_space_dim_k, 1))
     offset = 0
     for ps_map in phase_space_map.phase_space_map_list[1::2]:
-        k_vect = ps_map.output_phase_space.k_vect_perp
+        k_vect_perp = ps_map.output_phase_space.k_vect_perp
         cur_t_matrix = ps_map.T_matrix @ to_euclidian_matrix
         cur_t_shift = ps_map.T_matrix @ to_euclidian_shift + ps_map.T_shift
         # x maps to cur_t_matrix x + cur_t_shift
         # Last time x mapped to prev_t_matrix x + prev_t_shift,
         # The difference cur_t_matrix x + cur_t_shift - (prev_t_matrix x + prev_t_shift) is the thing we want to measure the K-length of.
+        k_vect = np.matrix(max_K_vector(np.asarray(k_vect_perp).flatten(), K)).T
         cur_c, cur_offset = dot_product_value(k_vect, cur_t_matrix-prev_t_matrix, cur_t_shift-prev_t_shift)
         cur_c = np.concatenate([cur_c, np.zeros((free_space_dim_k, 1))], axis=0)
         c += cur_c
@@ -224,6 +274,7 @@ def get_lp_objective(phase_space_map: PhaseSpaceMap, solution):
 def add_constraints_for_map(T, K_dual, ps_map: PhaseSpaceMap, solution, change_T, change_K):
     # should be a column vector
     particular_solution: np.matrix = solution["particular"]
+    ps_dim = particular_solution.shape[0]
     free_space_t: np.matrix = solution["t_nullspace"]
     free_space_k: np.matrix = solution["k_nullspace"]
     free_space_dim_t = free_space_t.shape[1]
@@ -247,7 +298,7 @@ def add_constraints_for_map(T, K_dual, ps_map: PhaseSpaceMap, solution, change_T
     if change_T:
         M = ps_map.input_phase_space.t_basis @ free_space_t
         N = ps_map.T_matrix
-        q = ps_map.input_phase_space.t_basis @ particular_solution[:free_space_dim_t] + ps_map.input_phase_space.t_offset
+        q = ps_map.input_phase_space.t_basis @ particular_solution[:ps_dim//2] + ps_map.input_phase_space.t_offset
         r = ps_map.T_shift
         for t_vect in map(lambda x: np.array([x]).T, T.normal_vectors):
             if not matrix_equals(t_vect, ps_map.output_phase_space.t_vect_perp):
@@ -262,7 +313,7 @@ def add_constraints_for_map(T, K_dual, ps_map: PhaseSpaceMap, solution, change_T
     if change_K:
         M = ps_map.input_phase_space.k_basis @ free_space_k
         N = ps_map.K_matrix
-        q = ps_map.input_phase_space.k_basis @ particular_solution[free_space_dim_t:] + ps_map.input_phase_space.k_offset
+        q = ps_map.input_phase_space.k_basis @ particular_solution[ps_dim//2:] + ps_map.input_phase_space.k_offset
         r = ps_map.K_shift
         for k_vect in map(lambda x: np.array([x]).T, K_dual.normal_vectors):
             if not matrix_equals(k_vect, ps_map.output_phase_space.k_vect_perp):
@@ -310,13 +361,75 @@ def dot_product_constraint(v, matrix, shift):
     A_transposed, one_minus_b = dot_product_value(v, matrix, shift)
     return A_transposed.T, np.ones((1,1))-one_minus_b
     
-# T_vectors = np.array([[0.,1.], [1.,0.], [0.,-1.], [-1.,0.]])
-# K_vectors = np.array([[1.,0.], [0.,1.], [-1.,0.], [0.,-1.]])
+
+# import math
+# a = np.matrix([math.cos(4*math.pi/5), math.sin(4*math.pi/5)]).T
+# b = np.matrix([math.cos(2*math.pi/5), math.sin(2*math.pi/5)]).T
+# c = np.matrix([1., 0.]).T
+# d = np.matrix([math.cos(-2*math.pi/5), math.sin(-2*math.pi/5)]).T
+# e = np.matrix([math.cos(-4*math.pi/5), math.sin(-4*math.pi/5)]).T
+
+# r = 1/math.cos(math.pi/5)
+# ko1 = np.matrix([r*math.cos(9*math.pi/10), r*math.sin(9*math.pi/10)]).T
+# ko2 = np.matrix([r*math.cos(5*math.pi/10), r*math.sin(5*math.pi/10)]).T
+# ko3 = np.matrix([r*math.cos(1*math.pi/10), r*math.sin(1*math.pi/10)]).T
+# ko4 = np.matrix([r*math.cos(-3*math.pi/10), r*math.sin(-3*math.pi/10)]).T
+# ko5 = np.matrix([r*math.cos(-7*math.pi/10), r*math.sin(-7*math.pi/10)]).T
+
+# T_vectors = np.array([np.asarray(x).flatten() for x in [a,b,c,d,e]])
+# K_dual_vectors = np.array([np.asarray(x).flatten() for x in [ko1,ko2,ko3,ko4,ko5]])
 
 # T = Polytope(normal_vectors=T_vectors, dim=2)
-# K = Polytope(normal_vectors=K_vectors, dim=2)
-# K_dual = get_polar_dual(K)
+# K_dual = Polytope(normal_vectors=K_dual_vectors, dim=2)
+# K = get_polar_dual(K_dual)
 
+# d2 = PhaseSpace(d, ko2)
+# b2 = PhaseSpace(b, ko2)
+# b5 = PhaseSpace(b, ko5)
+# a5 = PhaseSpace(a, ko5)
+# a4 = PhaseSpace(a, ko4)
+# d4 = PhaseSpace(d, ko4)
+
+# map_1 = d2.map_phi_K_x_id(b)
+# map_2 = b2.map_id_x_phi_T(ko5)
+# map_3 = b5.map_phi_K_x_id(a) # THIS ONE IS PROBLEMATIC
+# map_4 = a5.map_id_x_phi_T(ko4)
+# map_5 = a4.map_phi_K_x_id(d)
+# map_6 = d4.map_id_x_phi_T(ko2)
+
+# composed_1 = map_1
+# composed_2 = composed_1.left_compose(map_2)
+# composed_3 = composed_2.left_compose(map_3)
+# composed_4 = composed_3.left_compose(map_4)
+# composed_5 = composed_4.left_compose(map_5)
+# composed_6 = composed_5.left_compose(map_6)
+# d2.display()
+# print("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
+# composed_6.display_map()
+
+# print("MMMMMMMMMMMMMMMMMMMMMMMMMM")
+# print(composed_6.input_phase_space.t_basis)
+# print(composed_6.input_phase_space.k_basis)
+# print("LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL")
+# xt = np.matrix([-r*math.sin(math.pi/10), -r*math.cos(math.pi/10)]).T
+# xk = np.matrix([-math.sin(math.pi/5), math.cos(math.pi/5)]).T
+# for ps_map in [composed_1, composed_2, composed_3, composed_4, composed_5, composed_6]:
+    # print(ps_map.T_matrix)
+    # print(ps_map.T_shift)
+    # print(ps_map.K_matrix)
+    # print(ps_map.K_shift)
+    # print("MAPS TO")
+    # print(ps_map.T_matrix @ xt + ps_map.T_shift)
+    # print(ps_map.K_matrix @ xk + ps_map.K_shift)
+    # print("____________________")
+
+# map_3.display_map()
+
+# print(map_4.K_matrix @ composed_3.K_matrix)
+
+# solution = find_fixed_points(composed_6)
+# print(solution)
+# print(composed_6.input_phase_space.from_phase_space_coordinates(solution["particular"]))
 # b4 = PhaseSpace(t_vect_perp=np.matrix([0.,1.]).T, k_vect_perp=np.matrix([-1.,-1.]).T)
 # d4 = PhaseSpace(t_vect_perp=np.matrix([0.,-1.]).T, k_vect_perp=np.matrix([-1.,-1.]).T)
 # d2 = PhaseSpace(t_vect_perp=np.matrix([0.,-1.]).T, k_vect_perp=np.matrix([1.,1.]).T)

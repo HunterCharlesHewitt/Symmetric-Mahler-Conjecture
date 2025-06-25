@@ -9,7 +9,7 @@ def visualize_polytope(polytope, points=[], second_polytope=None):
         raise Exception("Can not visualize non two dimentional polytopes.")
     halfspaces = np.array([np.append(vector, -1) for vector in polytope])
 
-    print(halfspaces)
+    # print(halfspaces)
 
     # Interior point (must satisfy all constraints)
     interior_point = np.array([0.0, 0.0])
