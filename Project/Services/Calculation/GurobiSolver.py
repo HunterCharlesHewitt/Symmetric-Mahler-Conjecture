@@ -4,8 +4,55 @@ import numpy as np
 
 # Maybe I can make this a class, but for now, I'm just going to use it as a function.
 
+def gurobi_solver_simple(A,b,c):
+
+    # Convert np.matrix to np.array to avoid indexing issues
+    A = np.asarray(A)
+    b = np.asarray(b).flatten()
+    c = np.asarray(c).flatten()
+
+    num_vars = len(c)
+    num_constraints = len(b)
+
+    # Create a new model
+    model = gp.Model("simple_lp")
+
+    # Suppress output
+    model.setParam("OutputFlag", 0)
+
+    # Create variables
+    x_vars = model.addVars(num_vars, lb=-GRB.INFINITY, name="x")
+
+    # Set up constraints: A*x <= b
+    for i in range(num_constraints):
+        model.addConstr(gp.quicksum(A[i, j] * x_vars[j] for j in range(num_vars)) <= b[i], name=f"c{i}")
+
+    # Set objective function: minimize c*x
+    objective = gp.quicksum(c[j] * x_vars[j] for j in range(num_vars))
+    model.setObjective(objective, GRB.MINIMIZE)
+
+    # Optimize model
+    model.optimize()
+
+    # Check for solution
+    if model.status == GRB.OPTIMAL:
+        solution = np.array([x_vars[j].X for j in range(num_vars)])
+        return model.ObjVal, "optimal", solution
+    elif model.status == GRB.INFEASIBLE:
+        return float("inf"), "infeasible", None
+    elif model.status == GRB.UNBOUNDED:
+        return float("inf"), "unbounded", None
+    else:
+        return float("inf"), "error", None
+
 def gurobi_solver(As, b, c, dim, stop_num=0):
     # This function was completely written by ChatGPT.
+    
+    # Convert np.matrix to np.array to avoid indexing issues
+    As = [np.asarray(A) for A in As]
+    b = np.asarray(b).flatten()
+    c = np.asarray(c).flatten()
+
     num_vars = len(c)
     num_constraints = len(b)
 
@@ -24,7 +71,7 @@ def gurobi_solver(As, b, c, dim, stop_num=0):
         constrs.append(constr)
 
     # Step 4: Set fixed objective: minimize c^T x
-    obj_expr = gp.LinExpr([(c[j], x_vars[j]) for j in range(num_vars)])
+    obj_expr = gp.quicksum(c[j] * x_vars[j] for j in range(num_vars))
     model.setObjective(obj_expr, GRB.MINIMIZE)
     model.update()
 

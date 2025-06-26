@@ -7,6 +7,13 @@ def dot(a,b):
     # a dot product on matricies with one column
     return np.sum(np.multiply(a,b))
 
+def matrix_equals(A, B):
+    for i in range(A.shape[0]):
+        for j in range(A.shape[1]):
+            if A[i, j] != B[i, j]:
+                return False
+    return True
+
 class PhaseSpace:
     def __init__(self, t_vect_perp, k_vect_perp):
         self.vect_dim = t_vect_perp.shape[0]
@@ -198,3 +205,19 @@ class PhaseSpaceMap:
         self.phase_space_K_matrix = after_matrix_K @ self.K_matrix @ self.input_phase_space.k_basis
         self.phase_space_T_shift = after_matrix_T @ (self.T_matrix @ self.input_phase_space.t_offset + self.T_shift)
         self.phase_space_K_shift = after_matrix_K @ (self.K_matrix @ self.input_phase_space.k_offset + self.K_shift)
+    
+    def display_map(self):
+        for ps in self.phase_space_list:
+            ps.display()
+            print("__________________________________")
+        print("Mapping T:")
+        print("T matrix")
+        print(self.T_matrix)
+        print("T shift")
+        print(self.T_shift)
+        print("Mapping K:")
+        print("K matrix")
+        print(self.K_matrix)
+        print("K shift")
+        print(self.K_shift)
+
