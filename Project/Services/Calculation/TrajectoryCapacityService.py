@@ -5,6 +5,7 @@ from Project.Services.Calculation.LengthService import K_length
 from Project.Models.PhaseSpace import *
 from Project.Models.Capacity import Capacity
 from Project.Models.Polytope import Polytope
+from Project.Services.Output.TrajectoryVisualizerService import TrajectoryVisualizerService
 from Project.Services.Calculation.GurobiSolver import gurobi_solver_simple
 
 def get_trajectory_capacity(T, K):
@@ -40,7 +41,7 @@ def get_trajectory_capacity(T, K):
                     x = solution["particular"]
                     # fix_T starts out as true, so we only want the even indexes in phase_space_map_list
                     t_phase_space_map_list = phase_space_map.phase_space_map_list[::2]
-                    length = calculate_trajectory(T, K, x, t_phase_space_map_list)
+                    length = calculate_trajectory(T, K, x, t_phase_space_map_list, visualize_trajectory=False)
                 else:
                     A, b = get_lp_matrix(T, K_dual, phase_space_map, solution)
                     c, offset = get_lp_objective(phase_space_map, solution)
@@ -106,20 +107,29 @@ def find_fixed_points(phase_space_map: PhaseSpaceMap):
     rv["is_unique"] = False
     return rv
 
-def calculate_trajectory(T, K, x, t_phase_space_maps: list[PhaseSpaceMap]):
+def calculate_trajectory(T, K, x, t_phase_space_maps: list[PhaseSpaceMap], visualize_trajectory=False):
     length = 0
     prev_t, prev_k = t_phase_space_maps[0].input_phase_space.from_phase_space_coordinates(x)
+    k_list = []
+    t_list = []
     cur_t = prev_t
     cur_k = prev_k
     for phase_space_map in t_phase_space_maps:
         val = phase_space_map.map_x(x)
         cur_t, cur_k = phase_space_map.output_phase_space.from_phase_space_coordinates(val)
+        if visualize_trajectory:
+            k_list.append([cur_k.item((0, 0)), cur_k.item((1, 0))])
+            t_list.append([cur_t.item((0, 0)), cur_t.item((1, 0))])
         if not in_polytope(cur_t, T) or dot(cur_t, phase_space_map.output_phase_space.t_vect_perp) < 1-1e-6:
             return float('inf')
         if not in_polytope(cur_k, K) or dot(cur_k, phase_space_map.output_phase_space.k_vect_perp) < 1-1e-6:
             return float('inf')
         length += float(K_length(prev_t, cur_t, K))
         prev_t = cur_t
+    if visualize_trajectory:
+        # TODO I think the problem is that i'm drawing K when I should be doing the unit ball of K? Or something?
+        vs = TrajectoryVisualizerService(T=T, K=K, t_list=t_list, k_list=k_list)
+        vs.visualize_trajectory()
     # if length < 1e-5:
     #     return float('inf')
     return length
