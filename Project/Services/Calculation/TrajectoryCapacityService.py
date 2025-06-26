@@ -5,6 +5,7 @@ from Project.Services.Calculation.LengthService import K_length
 from Project.Models.PhaseSpace import PhaseSpace, PhaseSpaceMap, dot
 from Project.Models.Capacity import Capacity
 from Project.Models.Polytope import Polytope
+from Project.Services.Output.TrajectoryVisualizerService import visualize_trajectory
 
 def get_trajectory_capacity(T, K):
     # T is the table K is the norm
@@ -82,20 +83,36 @@ def find_fixed_point(phase_space_map: PhaseSpaceMap):
 
 def calculate_trajectory(T, K, x, t_phase_space_maps: list[PhaseSpaceMap]):
     length = 0
+
     prev_t, prev_k = t_phase_space_maps[0].input_phase_space.from_phase_space_coordinates(x)
+    k_list = []
+    t_list = []
     cur_t = prev_t
     cur_k = prev_k
     for phase_space_map in t_phase_space_maps:
         val = phase_space_map.map_x(x)
         cur_t, cur_k = phase_space_map.output_phase_space.from_phase_space_coordinates(val)
+        # TODO Only if 2D
+        k_list.append([cur_k.item((0, 0)), cur_k.item((1, 0))])
+        t_list.append([cur_t.item((0, 0)), cur_t.item((1, 0))])
         if not in_polytope(cur_t, T) or dot(cur_t, phase_space_map.output_phase_space.t_vect_perp) < 1-1e-6:
             return float('inf')
         if not in_polytope(cur_k, K) or dot(cur_k, phase_space_map.output_phase_space.k_vect_perp) < 1-1e-6:
             return float('inf')
         length += float(K_length(prev_t, cur_t, K))
         prev_t = cur_t
+    # capture all prev and curr t and k, put in a list, and then just draw the lines
     if length < 1e-5:
         return float('inf')
+    k_str = "K Points: "
+    t_str = "T Points: "
+    for p in k_list:
+        k_str += "(" + str(p[0]) + "," + str(p[1]) + ")"
+    for p in t_list:
+        t_str += "(" + str(p[0]) + "," + str(p[1]) + ")"
+    print(t_str)
+    print(k_str)
+    visualize_trajectory(T, K, t_list, k_list)
     return length
 
 def generate_phase_spaces(T, K_dual):
