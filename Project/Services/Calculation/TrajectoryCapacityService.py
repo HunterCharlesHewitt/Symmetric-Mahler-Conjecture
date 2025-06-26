@@ -83,7 +83,6 @@ def find_fixed_point(phase_space_map: PhaseSpaceMap):
 
 def calculate_trajectory(T, K, x, t_phase_space_maps: list[PhaseSpaceMap], visualize_trajectory=False):
     length = 0
-
     prev_t, prev_k = t_phase_space_maps[0].input_phase_space.from_phase_space_coordinates(x)
     k_list = []
     t_list = []
@@ -92,19 +91,19 @@ def calculate_trajectory(T, K, x, t_phase_space_maps: list[PhaseSpaceMap], visua
     for phase_space_map in t_phase_space_maps:
         val = phase_space_map.map_x(x)
         cur_t, cur_k = phase_space_map.output_phase_space.from_phase_space_coordinates(val)
-        # TODO Only if 2D
-        k_list.append([cur_k.item((0, 0)), cur_k.item((1, 0))])
-        t_list.append([cur_t.item((0, 0)), cur_t.item((1, 0))])
+        if visualize_trajectory:
+            k_list.append([cur_k.item((0, 0)), cur_k.item((1, 0))])
+            t_list.append([cur_t.item((0, 0)), cur_t.item((1, 0))])
         if not in_polytope(cur_t, T) or dot(cur_t, phase_space_map.output_phase_space.t_vect_perp) < 1-1e-6:
             return float('inf')
         if not in_polytope(cur_k, K) or dot(cur_k, phase_space_map.output_phase_space.k_vect_perp) < 1-1e-6:
             return float('inf')
         length += float(K_length(prev_t, cur_t, K))
         prev_t = cur_t
-    # capture all prev and curr t and k, put in a list, and then just draw the lines
     if length < 1e-5:
         return float('inf')
     if visualize_trajectory:
+        # TODO I think the problem is that i'm drawing K when I should be doing the unit ball of K? Or something?
         vs = TrajectoryVisualizerService(T=T, K=K, t_list=t_list, k_list=k_list)
         vs.visualize_trajectory()
     return length
