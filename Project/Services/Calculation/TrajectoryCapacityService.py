@@ -1,7 +1,7 @@
 import numpy as np
 
 from Project.Services.Calculation.VolumeService import get_polar_dual
-from Project.Services.Calculation.LengthService import K_length
+from Project.Services.Calculation.LengthService import K_length, max_K_vector
 from Project.Models.PhaseSpace import *
 from Project.Models.Capacity import Capacity
 from Project.Models.Polytope import Polytope
@@ -10,7 +10,7 @@ from Project.Services.Calculation.GurobiSolver import gurobi_solver_simple
 
 def get_trajectory_capacity(T, K):
     # T is the table K is the norm
-    K_dual = K
+    K_dual = get_polar_dual(K)
 
     dim = T.dim
     # These can be thought of as nodes.
@@ -41,10 +41,10 @@ def get_trajectory_capacity(T, K):
                     x = solution["particular"]
                     # fix_T starts out as true, so we only want the even indexes in phase_space_map_list
                     t_phase_space_map_list = phase_space_map.phase_space_map_list[::2]
-                    length = calculate_trajectory(T, K, x, t_phase_space_map_list, visualize_trajectory=False)
+                    length = calculate_trajectory(T, K_dual, x, t_phase_space_map_list, visualize_trajectory=True)
                 else:
                     A, b = get_lp_matrix(T, K_dual, phase_space_map, solution)
-                    c, offset = get_lp_objective(phase_space_map, solution)
+                    c, offset = get_lp_objective(K, phase_space_map, solution)
                     length, status, x = gurobi_solver_simple(A, b, c)
                     length += offset
                 if length < min_length and length > 1e-6:
@@ -105,7 +105,7 @@ def find_fixed_points(phase_space_map: PhaseSpaceMap):
     rv["is_unique"] = False
     return rv
 
-def calculate_trajectory(T, K, x, t_phase_space_maps: list[PhaseSpaceMap], visualize_trajectory=False):
+def calculate_trajectory(T, K_dual, x, t_phase_space_maps: list[PhaseSpaceMap], visualize_trajectory=False):
     length = 0
     prev_t, prev_k = t_phase_space_maps[0].input_phase_space.from_phase_space_coordinates(x)
     k_list = []
@@ -120,13 +120,12 @@ def calculate_trajectory(T, K, x, t_phase_space_maps: list[PhaseSpaceMap], visua
             t_list.append([cur_t.item((0, 0)), cur_t.item((1, 0))])
         if not in_polytope(cur_t, T) or dot(cur_t, phase_space_map.output_phase_space.t_vect_perp) < 1-1e-6:
             return float('inf')
-        if not in_polytope(cur_k, K) or dot(cur_k, phase_space_map.output_phase_space.k_vect_perp) < 1-1e-6:
+        if not in_polytope(cur_k, K_dual) or dot(cur_k, phase_space_map.output_phase_space.k_vect_perp) < 1-1e-6:
             return float('inf')
-        length += float(K_length(prev_t, cur_t, K))
+        length += float(K_length(prev_t, cur_t, get_polar_dual(K_dual)))
         prev_t = cur_t
     if visualize_trajectory:
-        # TODO I think the problem is that i'm drawing K when I should be doing the unit ball of K? Or something?
-        vs = TrajectoryVisualizerService(T=T, K=K, t_list=t_list, k_list=k_list)
+        vs = TrajectoryVisualizerService(T=T, K=K_dual, t_list=t_list, k_list=k_list)
         vs.visualize_trajectory()
     # if length < 1e-5:
     #     return float('inf')
@@ -195,11 +194,12 @@ def get_lp_matrix(T, K_dual, phase_space_map: PhaseSpaceMap, solution):
             b = np.concatenate([b, constraints_b], axis=0)
     return A, b
 
-def get_lp_objective(phase_space_map: PhaseSpaceMap, solution):
+def get_lp_objective(K, phase_space_map: PhaseSpaceMap, solution):
     # We want to minimize the K-length of the trajectory.
     # So every other map in ps_map list fixes K. We care about the maps where T changes
     # Since the first map is identity, there are an odd number of phase space maps, and we only want ones with odd index.
     particular_solution: np.matrix = solution["particular"]
+    ps_dim = particular_solution.shape[0]
     free_space_t: np.matrix = solution["t_nullspace"]
     free_space_k: np.matrix = solution["k_nullspace"]
     free_space_dim_t = free_space_t.shape[1]
@@ -210,18 +210,19 @@ def get_lp_objective(phase_space_map: PhaseSpaceMap, solution):
 
     # Multiplying by zero-dimentional matricies should be fine in theory.
     to_euclidian_matrix = phase_space_map.input_phase_space.t_basis @ free_space_t
-    to_euclidian_shift = phase_space_map.input_phase_space.t_basis @ particular_solution[:free_space_dim_t] + phase_space_map.input_phase_space.t_offset
+    to_euclidian_shift = phase_space_map.input_phase_space.t_basis @ particular_solution[:ps_dim//2] + phase_space_map.input_phase_space.t_offset
     prev_t_matrix = to_euclidian_matrix
     prev_t_shift = to_euclidian_shift
     c = np.zeros((free_space_dim_t+free_space_dim_k, 1))
     offset = 0
     for ps_map in phase_space_map.phase_space_map_list[1::2]:
-        k_vect = ps_map.output_phase_space.k_vect_perp
+        k_vect_perp = ps_map.output_phase_space.k_vect_perp
         cur_t_matrix = ps_map.T_matrix @ to_euclidian_matrix
         cur_t_shift = ps_map.T_matrix @ to_euclidian_shift + ps_map.T_shift
         # x maps to cur_t_matrix x + cur_t_shift
         # Last time x mapped to prev_t_matrix x + prev_t_shift,
         # The difference cur_t_matrix x + cur_t_shift - (prev_t_matrix x + prev_t_shift) is the thing we want to measure the K-length of.
+        k_vect = np.matrix(max_K_vector(np.asarray(k_vect_perp).flatten(), K)).T
         cur_c, cur_offset = dot_product_value(k_vect, cur_t_matrix-prev_t_matrix, cur_t_shift-prev_t_shift)
         cur_c = np.concatenate([cur_c, np.zeros((free_space_dim_k, 1))], axis=0)
         c += cur_c
@@ -233,6 +234,7 @@ def get_lp_objective(phase_space_map: PhaseSpaceMap, solution):
 def add_constraints_for_map(T, K_dual, ps_map: PhaseSpaceMap, solution, change_T, change_K):
     # should be a column vector
     particular_solution: np.matrix = solution["particular"]
+    ps_dim = particular_solution.shape[0]
     free_space_t: np.matrix = solution["t_nullspace"]
     free_space_k: np.matrix = solution["k_nullspace"]
     free_space_dim_t = free_space_t.shape[1]
@@ -256,7 +258,7 @@ def add_constraints_for_map(T, K_dual, ps_map: PhaseSpaceMap, solution, change_T
     if change_T:
         M = ps_map.input_phase_space.t_basis @ free_space_t
         N = ps_map.T_matrix
-        q = ps_map.input_phase_space.t_basis @ particular_solution[:free_space_dim_t] + ps_map.input_phase_space.t_offset
+        q = ps_map.input_phase_space.t_basis @ particular_solution[:ps_dim//2] + ps_map.input_phase_space.t_offset
         r = ps_map.T_shift
         for t_vect in map(lambda x: np.array([x]).T, T.normal_vectors):
             if not matrix_equals(t_vect, ps_map.output_phase_space.t_vect_perp):
@@ -271,7 +273,7 @@ def add_constraints_for_map(T, K_dual, ps_map: PhaseSpaceMap, solution, change_T
     if change_K:
         M = ps_map.input_phase_space.k_basis @ free_space_k
         N = ps_map.K_matrix
-        q = ps_map.input_phase_space.k_basis @ particular_solution[free_space_dim_t:] + ps_map.input_phase_space.k_offset
+        q = ps_map.input_phase_space.k_basis @ particular_solution[ps_dim//2:] + ps_map.input_phase_space.k_offset
         r = ps_map.K_shift
         for k_vect in map(lambda x: np.array([x]).T, K_dual.normal_vectors):
             if not matrix_equals(k_vect, ps_map.output_phase_space.k_vect_perp):
