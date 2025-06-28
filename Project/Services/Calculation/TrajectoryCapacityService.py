@@ -47,9 +47,7 @@ def get_trajectory_capacity(T, K):
                     c, offset = get_lp_objective(phase_space_map, solution)
                     length, status, x = gurobi_solver_simple(A, b, c)
                     length += offset
-                if length < min_length:
-                    print("CCCCCCCCCCCCccc")
-                    print(length)
+                if length < min_length and length > 1e-6:
                     min_length = length
                     min_cone = phase_space_map.input_phase_space.k_vect_perp
     # TODO: I don't know if we should return all of this. x isn't really a trajectory, just a starting point.
@@ -85,7 +83,7 @@ def find_fixed_points(phase_space_map: PhaseSpaceMap):
     tolerance = 1e-6
     b_flat = np.asarray(b).flatten()
     x_particular = np.matrix(np.linalg.lstsq(A, b_flat, rcond=None)[0]).T
-    residual = np.linalg.norm(A @ x_particular - b_flat)
+    residual = np.linalg.norm(A @ x_particular - b)
     rv = {
         "particular": None,
         "any_solution": False,
