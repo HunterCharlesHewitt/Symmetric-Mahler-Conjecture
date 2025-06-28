@@ -1,6 +1,9 @@
 # virtual environment
 venv
 
+# output files
+Project/Services/Output/Trajectory_Visualization_Outputs/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
