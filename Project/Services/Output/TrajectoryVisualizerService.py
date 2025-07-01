@@ -41,7 +41,6 @@ class TrajectoryVisualizerService:
         self.k_list = k_list
         self.plotted_t_values = [[], []]
         self.plotted_k_values = [[], []]
-
         self.fig, self.axs = plt.subplots(2, figsize=(5, 10))
         self.t_axis = self.axs[0]
         self.k_axis = self.axs[1]
@@ -55,10 +54,11 @@ class TrajectoryVisualizerService:
         self.t_axis.grid(True)
         self.k_axis.grid(True)
 
-        self.filename = "Project/Services/Output/Trajectory_Visualization_Outputs/Trajectory_Visualization_" + str(uuid.uuid4().hex) + ".gif"
+        self.filename = "Project/Services/Output/Trajectory_Visualization_Outputs/Trajectory_Visualization_" + str(
+            uuid.uuid4().hex) + ".gif"
 
         metadata = dict(title='Trajectory Visualizer')
-        self.writer = PillowWriter(fps= 30, metadata=metadata)
+        self.writer = PillowWriter(fps=30, metadata=metadata)
 
     def visualize_trajectory(self):
         draw_polytope(polytope=self.T, axs_for_polytope=self.t_axis, edge_color='blue')
@@ -79,21 +79,21 @@ class TrajectoryVisualizerService:
         x_val_change_rate = abs(start[0] - end[0]) / NUM_POINTS_PLOTTED_PER_LINE
         if slope == np.inf:
             if direction == "+":
-                while curr_y_val < end[1]:
+                for i in range(0, NUM_POINTS_PLOTTED_PER_LINE):
                     self.add_frame_for_axis(plot_points, curr_x_val, curr_y_val, plotted_values)
                     curr_y_val += y_val_change_rate
             else:
-                while curr_y_val > end[1]:
+                for i in range(0, NUM_POINTS_PLOTTED_PER_LINE):
                     self.add_frame_for_axis(plot_points, curr_x_val, curr_y_val, plotted_values)
                     curr_y_val -= y_val_change_rate
         else:
             if direction == "+":
-                while curr_x_val < end[0]:
+                for i in range(0, NUM_POINTS_PLOTTED_PER_LINE):
                     self.add_frame_for_axis(plot_points, curr_x_val, curr_y_val, plotted_values)
                     curr_x_val += x_val_change_rate
                     curr_y_val = slope * (curr_x_val - start[0]) + start[1]
             else:
-                while curr_x_val > end[0]:
+                for i in range(0, NUM_POINTS_PLOTTED_PER_LINE):
                     self.add_frame_for_axis(plot_points, curr_x_val, curr_y_val, plotted_values)
                     curr_x_val -= x_val_change_rate
                     curr_y_val = slope * (curr_x_val - start[0]) + start[1]
