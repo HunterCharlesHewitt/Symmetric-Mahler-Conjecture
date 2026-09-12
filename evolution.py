@@ -106,3 +106,5 @@ def evolution_simulator(dim, T_sides, K_sides, species_count, generations, survi
         stop_num = top_species[0][1]
         mutation_rate = starting_mutation_rate/(1+i*diminishing_mutation_rate)
     return best_alive, stop_num
+
+evolution_simulator(dim=2, T_sides=5, K_sides=5, species_count=20, generations=11, survival_rate=0.2, mutation_rate=0.05, normailized=False, diminishing_mutation_rate=0.12)

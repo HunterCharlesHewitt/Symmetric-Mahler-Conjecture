@@ -65,9 +65,12 @@ class TrajectoryVisualizerService:
         draw_polytope(polytope=self.K, axs_for_polytope=self.k_axis, edge_color='blue')
         # plt.show()
         with self.writer.saving(self.fig, self.filename, dpi=100):
+            print(self.t_list)
             for i in range(len(self.t_list) - 1):
+                print(f"Drawing bounce {i}")
                 self.draw_bounce(self.t_list[i], self.t_list[i + 1], self.t_plot_points, self.plotted_t_values)
                 self.draw_bounce(self.k_list[i], self.k_list[i + 1], self.k_plot_points, self.plotted_k_values)
+        plt.show()
 
     def draw_bounce(self, start, end, plot_points, plotted_values):
         if start[0] == end[0] and start[1] == end[1]:

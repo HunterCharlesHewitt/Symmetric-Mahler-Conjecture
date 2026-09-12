@@ -28,7 +28,7 @@ def visualize_polytope(polytope, points=[], second_polytope=None):
     if points:
         plt.scatter(*zip(*points), color='red')
     plt.gca().set_aspect('equal')
-    plt.title("Convex Polygon (Sorted via Interior Point)")
+    plt.title("Convex Polygons")
     plt.grid(True)
 
     if second_polytope is not None:
